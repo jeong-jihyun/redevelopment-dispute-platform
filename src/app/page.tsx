@@ -2,12 +2,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Search } from "lucide-react";
 import { DISPUTES, LAWS, PRECEDENTS, STAGES, TEMPLATES } from "@/lib/data";
 import { useDB } from "@/lib/store";
 import { dday } from "@/lib/analyze";
 import {
-  Badge, CardGrid, CaseCard, DataTable, Disclaimer, HeroPanel, Page, Panel, PrecCard, Section, SelectField, TopBar, btnCls, type BadgeSpec,
+  Badge, CardGrid, CaseCard, DataTable, Disclaimer, SearchHero, Page, Panel, PrecCard, Section, SelectField, TopBar, btnCls, type BadgeSpec,
 } from "@/components/ui";
 
 const EXAMPLES = ["조합에서 총회 회의록을 공개하지 않습니다", "분양신청을 못 해서 현금청산 대상이 됐어요", "세입자인데 주거이전비를 받을 수 있나요"];
@@ -40,18 +39,10 @@ export default function Home() {
     <>
       <TopBar title="홈" crumb="도시정비 분쟁지원" right={<Link href="/my" className={btnCls("secondary")}>{db.profile ? db.profile.name : "시작하기"}</Link>} />
       <Page wide>
-        <HeroPanel eyebrow="REDEVELOPMENT DISPUTE SUPPORT" title="복잡한 분쟁을 명확한 대응으로" lead="어떤 문제가 있는지 그대로 적어 주세요. 관련 법령·판례와 대응 절차, 필요한 서류까지 이어서 찾아 드립니다.">
-          <form onSubmit={(e) => { e.preventDefault(); go(q); }} className="mt-5 flex max-w-[720px] items-center gap-2 rounded-[14px] bg-white p-1.5 pl-3.5 text-ink-900">
-            <Search size={19} className="shrink-0 text-ink-400" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="예) 조합이 감정평가 자료를 안 보여줘요" className="min-w-0 flex-1 bg-transparent py-2 outline-none" aria-label="통합 검색" />
-            <button className={btnCls("primary")}>검색</button>
-          </form>
-          <div className="no-scrollbar -mx-5 mt-3 flex gap-2 overflow-x-auto px-5 tab:mx-0 tab:flex-wrap tab:px-0">
-            {EXAMPLES.map((e) => (
-              <button key={e} onClick={() => go(e)} className="min-h-9 shrink-0 rounded-full border border-[#34465f] bg-[#1a2b45] px-3.5 text-[12px] text-[#dbe5f3] hover:bg-[#243a59]">{e}</button>
-            ))}
-          </div>
-        </HeroPanel>
+        <SearchHero eyebrow="REDEVELOPMENT DISPUTE SUPPORT" title="복잡한 분쟁을 명확한 대응으로"
+          lead="어떤 문제가 있는지 그대로 적어 주세요. 관련 법령·판례와 대응 절차, 필요한 서류까지 이어서 찾아 드립니다."
+          label="통합 검색" value={q} onChange={setQ} onSubmit={() => go(q)} placeholder="예) 조합이 감정평가 자료를 안 보여줘요"
+          examples={EXAMPLES} onExample={go} />
 
         {upcoming.length > 0 && (
           <Section title="다가오는 기한" desc="내 사건에 등록한 기한 중 가까운 순서" more={{ href: "/cases", label: "내 사건" }}>

@@ -5,7 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import { DISPUTES, templateById } from "@/lib/data";
 import { scoreDisputes, searchLaws, searchPrecedents } from "@/lib/analyze";
 import {
-  ActionPanel, Alert, CardGrid, CaseCard, Disclaimer, Empty, LawCard, Page, PageHeader, PrecCard, SearchPanel, Section, StepList, TopBar, btnCls,
+  ActionPanel, Alert, CardGrid, CaseCard, Disclaimer, Empty, LawCard, Page, PrecCard, SearchHero, Section, StepList, TopBar, btnCls,
 } from "@/components/ui";
 import LiveLawSearch from "@/components/LiveLawSearch";
 
@@ -25,12 +25,10 @@ function Inner() {
     <>
       <TopBar title="통합 검색" crumb="도시정비 분쟁지원" back="/" />
       <Page wide>
-        <PageHeader eyebrow="Search" title="통합 검색" lead="분쟁 유형·법령·판례·서류를 한 번에 찾습니다." />
-        <div className="mt-5">
-          <SearchPanel label="검색어" value={input} onChange={setInput} placeholder="상황이나 키워드 (예: 총회 회의록 공개)"
-            help={q ? `‘${q}’ 검색 결과입니다.` : "문장으로 적어도 됩니다."}
-            onSubmit={() => input.trim() && router.replace(`/search?q=${encodeURIComponent(input.trim())}`)} />
-        </div>
+        <SearchHero eyebrow="SEARCH" title="통합 검색" lead="분쟁 유형·법령·판례·서류를 한 번에 찾습니다."
+          label="검색어" value={input} onChange={setInput} placeholder="상황이나 키워드 (예: 총회 회의록 공개)"
+          help={q ? `‘${q}’ 검색 결과입니다.` : "문장으로 적어도 됩니다."}
+          onSubmit={() => input.trim() && router.replace(`/search?q=${encodeURIComponent(input.trim())}`)} />
 
         {!q && <div className="mt-4"><Empty>찾고 싶은 상황을 입력해 주세요.</Empty></div>}
         {nothing && <Alert tone="warn" title="결과 없음">관련 분쟁 유형을 찾지 못했어요. 단어를 바꾸거나(예: 총회, 현금청산, 감정평가) AI 상담을 이용해 보세요.</Alert>}

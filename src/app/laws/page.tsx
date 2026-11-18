@@ -2,7 +2,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { LAWS, PRECEDENTS } from "@/lib/data";
-import { Alert, Badge, CardGrid, Disclaimer, LawCard, Page, PageHeader, Panel, PrecCard, Section, SelectField, TopBar, btnCls, inputCls, Field } from "@/components/ui";
+import { Alert, Badge, CardGrid, Disclaimer, HeroSelect, LawCard, Page, PrecCard, SearchHero, Section, TopBar } from "@/components/ui";
 import LiveLawSearch from "@/components/LiveLawSearch";
 
 const KINDS = [
@@ -32,21 +32,10 @@ function Inner() {
     <>
       <TopBar title="법률 자료" crumb="도시정비 분쟁지원" />
       <Page wide>
-        <PageHeader eyebrow="Legal sources" title="법령 · 판례" lead="공식 출처(국가법령정보센터) 원문으로 연결됩니다. 요약은 이해를 돕기 위한 참고 정보입니다." />
-
-        <Panel className="mt-5">
-          <form onSubmit={(e) => { e.preventDefault(); setQ(input.trim()); }}>
-            <div className="grid gap-x-4 tab:grid-cols-[220px_1fr]">
-              <SelectField label="자료 종류" value={tab} onChange={(v) => { setTab(v); router.replace(`/laws?tab=${v}`); }} options={KINDS} />
-              <Field label="검색어" help={tab === "prec" ? "사건번호 또는 키워드 (예: 2023도16588)" : "법령명·조문·키워드 (예: 현금청산)"}>
-                <div className="flex gap-2">
-                  <input value={input} onChange={(e) => setInput(e.target.value)} className={`${inputCls} min-w-0 flex-1`} aria-label="검색어" />
-                  <button className={btnCls("primary")}>검색</button>
-                </div>
-              </Field>
-            </div>
-          </form>
-        </Panel>
+        <SearchHero eyebrow="LEGAL SOURCES" title="법령 · 판례" lead="공식 출처(국가법령정보센터) 원문으로 연결됩니다. 요약은 이해를 돕기 위한 참고 정보입니다."
+          top={<HeroSelect label="자료 종류" value={tab} onChange={(v) => { setTab(v); router.replace(`/laws?tab=${v}`); }} options={KINDS} />}
+          label="검색어" value={input} onChange={setInput} onSubmit={() => setQ(input.trim())}
+          placeholder={tab === "prec" ? "사건번호 또는 키워드 (예: 2023도16588)" : "법령명·조문·키워드 (예: 현금청산)"} />
 
         {tab === "law" && (
           <>

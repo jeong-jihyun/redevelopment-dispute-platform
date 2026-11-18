@@ -163,15 +163,46 @@ export function PageHeader({ eyebrow, title, lead, badges }: { eyebrow: string; 
   );
 }
 
-/** 홈 첫 화면 전용 남색 상자 (사용자 확정 2026-11-19). 홈 밖에서 쓰지 않는다. */
-export function HeroPanel({ eyebrow, title, lead, children }: { eyebrow: string; title: string; lead: string; children: ReactNode }) {
+/** 검색 영역 = 남색 상자 (사용자 확정 2026-11-19). 홈·통합 검색·법령 검색 모두 이 부품만 사용 */
+export function SearchHero({ eyebrow, title, lead, label, value, onChange, onSubmit, placeholder, help, examples, onExample, top }: {
+  eyebrow: string; title: string; lead?: string; label: string; value: string; onChange: (v: string) => void; onSubmit: () => void;
+  placeholder?: string; help?: string; examples?: string[]; onExample?: (e: string) => void; top?: ReactNode;
+}) {
   return (
     <section className="rounded-[24px] bg-navy-950 p-5 text-white shadow-[var(--shadow-md)] tab:p-8 desk:p-10">
       <div className="text-[11px] font-extrabold tracking-[1.4px] text-[#8fb4ff]">{eyebrow}</div>
       <h1 className="mt-2 text-[24px] font-extrabold leading-tight tracking-[-1px] tab:text-[30px] tab:tracking-[-1.2px]">{title}</h1>
-      <p className="mt-2 max-w-[640px] text-[14px] leading-relaxed text-[#b9c7d9]">{lead}</p>
-      {children}
+      {lead && <p className="mt-2 max-w-[640px] text-[14px] leading-relaxed text-[#b9c7d9]">{lead}</p>}
+      {top && <div className="mt-5 max-w-[720px]">{top}</div>}
+      <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} className={`${top ? "mt-3" : "mt-5"} max-w-[720px]`}>
+        <span className="sr-only">{label}</span>
+        <div className="flex items-center gap-2 rounded-[14px] bg-white p-1.5 pl-3.5 text-ink-900">
+          <Search size={19} className="shrink-0 text-ink-400" />
+          <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={label} className="min-w-0 flex-1 bg-transparent py-2 outline-none" />
+          <button type="submit" className={btnCls("primary")}>검색</button>
+        </div>
+      </form>
+      {help && <p className="mt-2 text-[12px] text-[#9fb0c7]">{help}</p>}
+      {examples && examples.length > 0 && (
+        <div className="no-scrollbar -mx-5 mt-3 flex gap-2 overflow-x-auto px-5 tab:mx-0 tab:flex-wrap tab:px-0">
+          {examples.map((e) => (
+            <button key={e} type="button" onClick={() => onExample?.(e)} className="min-h-9 shrink-0 rounded-full border border-[#34465f] bg-[#1a2b45] px-3.5 text-[12px] text-[#dbe5f3] hover:bg-[#243a59]">{e}</button>
+          ))}
+        </div>
+      )}
     </section>
+  );
+}
+
+/** 남색 검색 상자 안의 선택칸 */
+export function HeroSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="text-[12px] font-bold text-[#b9c7d9]">{label}</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-[9px] border border-[#34465f] bg-white px-3 py-2.5 text-ink-900 outline-none focus:border-blue-500">
+        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </label>
   );
 }
 
@@ -297,24 +328,6 @@ export function SelectField({ label, value, onChange, options, help }: { label: 
         {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     </Field>
-  );
-}
-
-/** 검색·질문 입력: 라벨 → 입력칸 → 도움말 + 주요 버튼 */
-export function SearchPanel({ label, value, onChange, onSubmit, placeholder, help, button = "검색", primary = true }: {
-  label: string; value: string; onChange: (v: string) => void; onSubmit: () => void; placeholder?: string; help?: string; button?: string; primary?: boolean;
-}) {
-  return (
-    <Panel>
-      <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }}>
-        <Field label={label} help={help}>
-          <div className="flex gap-2">
-            <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={label} className={`${inputCls} min-w-0 flex-1`} />
-            <button type="submit" className={btnCls(primary ? "primary" : "secondary")}>{button}</button>
-          </div>
-        </Field>
-      </form>
-    </Panel>
   );
 }
 

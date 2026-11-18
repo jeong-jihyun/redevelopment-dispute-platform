@@ -29,7 +29,7 @@ function Composer({ onSend, busy, placeholder, label }: { onSend: (t: string) =>
   const ref = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     const el = ref.current; if (!el) return;
-    el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 140) + "px";
+    el.style.height = ""; if (el.scrollHeight > el.clientHeight + 2) el.style.height = Math.min(el.scrollHeight + 2, 140) + "px"; el.style.overflowY = el.scrollHeight > 140 ? "auto" : "hidden";
   }, [text]);
   const send = () => { const t = text.trim(); if (!t || busy) return; onSend(t); setText(""); };
   return (
@@ -37,7 +37,7 @@ function Composer({ onSend, busy, placeholder, label }: { onSend: (t: string) =>
       <textarea ref={ref} rows={1} value={text} maxLength={MAX} aria-label={label}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }}
-        placeholder={placeholder} className={`${inputCls} max-h-36 min-h-11 flex-1 resize-none leading-snug`} />
+        placeholder={placeholder} className={`${inputCls} h-11 max-h-36 min-h-11 flex-1 resize-none overflow-hidden leading-[22px] tab:h-10 tab:min-h-10 tab:py-[8px]`} />
       <button type="button" onClick={send} disabled={!text.trim() || busy} className={btnCls("primary")}>
         {busy ? <Loader2 size={16} className="animate-spin" /> : "보내기"}
       </button>
@@ -162,7 +162,7 @@ function Chat({ c, aiOn }: { c: Conversation; aiOn: boolean | null }) {
       {/* 입력창: 폰은 하단 탭 위, 태블릿·PC는 화면 아래 고정 */}
       <div className="no-print fixed inset-x-0 z-30 border-t border-line bg-canvas/95 px-3 py-2.5 backdrop-blur bottom-[calc(56px+env(safe-area-inset-bottom))] tab:bottom-0 tab:left-[210px] desk:left-[252px]">
         <div className="mx-auto max-w-[960px]">
-          <Composer busy={busy} onSend={send} label={activeFollow ? "직접 답하기" : "이어서 질문하기"} placeholder={activeFollow ? "직접 답하기" : "이어서 질문하기 (예: 그럼 언제까지 해야 하나요?)"} />
+          <Composer busy={busy} onSend={send} label={activeFollow ? "직접 답하기" : "이어서 질문하기"} placeholder={activeFollow ? "직접 답하기" : "이어서 질문하기"} />
         </div>
       </div>
     </>

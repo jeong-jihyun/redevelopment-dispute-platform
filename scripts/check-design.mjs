@@ -12,7 +12,6 @@ const RULES = [
 ];
 // 홈 HeroPanel 안 검색창·예시 질문은 사용자 확정 모양이라 예외
 const EXCEPT = [
-  { file: "src/app/page.tsx", lines: /rounded-\[14px\] bg-white p-1\.5|rounded-full border border-\[#34465f\]/ },
   { file: "src/app/layout.tsx", lines: /themeColor/ }, // 브라우저 상단 색(메타데이터)
 ];
 const files = [];
