@@ -2,15 +2,12 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
+import { Loader2 } from "lucide-react";
 import {
-  AlertTriangle, Banknote, BookOpen, Building2, Check, ChevronLeft, CircleHelp, Copy, ExternalLink, FileStack, FileText, FolderLock,
-  Gavel, HardHat, Home, Info, Landmark, MessageCircle, Scale, Search, ShieldAlert, TrendingUp, Truck, UserCheck, UserRound, Users,
+  AlertTriangle, BookOpen, Check, ChevronLeft, Copy, ExternalLink, FileText, FolderLock, Home, Info, MessageCircle, Scale, Search, ShieldAlert, UserRound,
 } from "lucide-react";
 import { DATA_CHECKED, type LawRef, type Precedent } from "@/lib/data";
 
-export const ICONS: Record<string, typeof Home> = {
-  Landmark, UserCheck, Users, FileStack, Scale, Banknote, Truck, HardHat, Search, Home, TrendingUp, Building2, Gavel, CircleHelp,
-};
 
 /* ───────── 내비게이션: 폰 하단 탭 / 태블릿 축소 사이드바 / PC 고정 사이드바 ───────── */
 const MOBILE_NAV = [
@@ -121,11 +118,79 @@ export function Page({ children, wide }: { children: ReactNode; wide?: boolean }
   return <main className={`safe-bottom mx-auto px-4 pt-5 tab:px-6 tab:pt-[30px] desk:px-[42px] desk:pt-[38px] ${wide ? "max-w-[1240px]" : "max-w-[960px]"}`}>{children}</main>;
 }
 
-/* ───────── 기본 컴포넌트 ───────── */
-export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-[18px] border border-line bg-white p-4 shadow-[var(--shadow-sm)] tab:p-5 ${className}`}>{children}</div>;
+/* ───────── 기본 부품 (디자인 시스템 v1.0) — 화면은 이 부품만으로 조립한다. docs/ui-patterns.md 참고 ───────── */
+
+export type Tone = "blue" | "green" | "amber" | "red" | "gray" | "purple";
+export type BadgeSpec = { text: string; tone: Tone };
+
+export function Badge({ children, tone = "gray" }: { children: ReactNode; tone?: Tone }) {
+  const t = { blue: "bg-blue-100 text-[#2859ae]", green: "bg-green-bg text-green", amber: "bg-amber-bg text-amber", red: "bg-red-bg text-red", gray: "bg-[#eef1f5] text-[#5c6879]", purple: "bg-purple-bg text-purple" }[tone];
+  return <span className={`inline-flex items-center whitespace-nowrap rounded-full px-[9px] py-1 text-[11px] font-bold leading-none ${t}`}>{children}</span>;
 }
 
+type BtnKind = "primary" | "secondary" | "ghost" | "danger";
+export const btnCls = (kind: BtnKind = "primary") =>
+  `inline-flex min-h-11 items-center justify-center gap-[7px] rounded-[9px] border px-[14px] text-[14px] font-bold disabled:cursor-not-allowed disabled:opacity-45 tab:min-h-10 tab:text-[13px] ${
+    { primary: "border-transparent bg-blue-600 text-white hover:bg-blue-700",
+      secondary: "border-line-strong bg-white text-ink-700 hover:bg-soft",
+      ghost: "border-transparent bg-transparent text-ink-700 hover:bg-canvas",
+      danger: "border-[#f7cbd1] bg-red-bg text-red" }[kind]}`;
+
+export function Btn({ children, onClick, kind = "primary", type = "button", disabled, className = "" }: {
+  children: ReactNode; onClick?: () => void; kind?: BtnKind; type?: "button" | "submit"; disabled?: boolean; className?: string;
+}) {
+  return <button type={type} disabled={disabled} onClick={onClick} className={`${btnCls(kind)} ${className}`}>{children}</button>;
+}
+
+export function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <div className={`rounded-[18px] border border-line bg-white p-4 shadow-[var(--shadow-sm)] tab:p-5 ${className}`}>{children}</div>;
+}
+/** @deprecated Panel과 같음 */
+export const Card = Panel;
+
+export function Eyebrow({ children }: { children: ReactNode }) {
+  return <div className="text-[11px] font-extrabold uppercase tracking-[1.4px] text-blue-600">{children}</div>;
+}
+
+export function PageHeader({ eyebrow, title, lead, badges }: { eyebrow: string; title: string; lead?: string; badges?: BadgeSpec[] }) {
+  return (
+    <div>
+      <Eyebrow>{eyebrow}</Eyebrow>
+      <h1 className="mb-[9px] mt-[7px] text-[24px] font-bold leading-snug tracking-[-0.7px] text-navy-950 tab:text-[30px] tab:tracking-[-1.2px]">{title}</h1>
+      {lead && <p className="max-w-[720px] text-[14px] text-ink-500">{lead}</p>}
+      {badges && badges.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{badges.map((b) => <Badge key={b.text} tone={b.tone}>{b.text}</Badge>)}</div>}
+    </div>
+  );
+}
+
+/** 홈 첫 화면 전용 남색 상자 (사용자 확정 2026-11-19). 홈 밖에서 쓰지 않는다. */
+export function HeroPanel({ eyebrow, title, lead, children }: { eyebrow: string; title: string; lead: string; children: ReactNode }) {
+  return (
+    <section className="rounded-[24px] bg-navy-950 p-5 text-white shadow-[var(--shadow-md)] tab:p-8 desk:p-10">
+      <div className="text-[11px] font-extrabold tracking-[1.4px] text-[#8fb4ff]">{eyebrow}</div>
+      <h1 className="mt-2 text-[24px] font-extrabold leading-tight tracking-[-1px] tab:text-[30px] tab:tracking-[-1.2px]">{title}</h1>
+      <p className="mt-2 max-w-[640px] text-[14px] leading-relaxed text-[#b9c7d9]">{lead}</p>
+      {children}
+    </section>
+  );
+}
+
+export function Section({ title, desc, kicker, more, children }: { title: ReactNode; desc?: string; kicker?: string; more?: { href: string; label?: string }; children: ReactNode }) {
+  return (
+    <section className="mt-8 tab:mt-[42px]">
+      <div className="mb-3 flex items-end justify-between gap-3 tab:mb-4">
+        <div>
+          <h2 className="text-[17px] font-bold tracking-[-0.5px] text-navy-950 tab:text-[19px]">{title}</h2>
+          {desc && <p className="mt-1 text-[12px] text-ink-500">{desc}</p>}
+        </div>
+        {more ? <Link href={more.href} className="shrink-0 text-[12px] font-bold text-ink-700">{more.label ?? "자세히 보기"} →</Link>
+          : kicker ? <span className="hidden text-[10px] font-bold tracking-[1px] text-ink-400 tab:block">{kicker}</span> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+/** 구역 제목만 필요할 때 (Section과 같은 모양) */
 export function H2({ children, desc, more, kicker }: { children: ReactNode; desc?: string; more?: { href: string; label?: string }; kicker?: string }) {
   return (
     <div className="mb-3 mt-8 flex items-end justify-between gap-3 tab:mb-4 tab:mt-[42px]">
@@ -139,37 +204,42 @@ export function H2({ children, desc, more, kicker }: { children: ReactNode; desc
   );
 }
 
-export function Eyebrow({ children }: { children: ReactNode }) {
-  return <div className="text-[11px] font-extrabold uppercase tracking-[1.4px] text-blue-600">{children}</div>;
-}
-
-type BtnKind = "primary" | "secondary" | "ghost" | "danger";
-export const btnCls = (kind: BtnKind = "primary") =>
-  `inline-flex min-h-11 items-center justify-center gap-[7px] rounded-[9px] border px-4 text-[14px] font-bold disabled:cursor-not-allowed disabled:opacity-45 tab:min-h-10 tab:text-[13px] ${
-    { primary: "border-transparent bg-blue-600 text-white hover:bg-blue-700",
-      secondary: "border-line-strong bg-white text-ink-700 hover:bg-soft",
-      ghost: "border-transparent bg-transparent text-ink-700 hover:bg-canvas",
-      danger: "border-[#f7cbd1] bg-red-bg text-red" }[kind]}`;
-
-export function Btn({ children, onClick, kind = "primary", type = "button", disabled, className = "" }: {
-  children: ReactNode; onClick?: () => void; kind?: BtnKind; type?: "button" | "submit"; disabled?: boolean; className?: string;
+/** 목록 항목은 모두 이 카드: 배지 2개 → 제목 → 설명 → 구분선 아래 정보 · 바로가기 */
+export function CaseCard({ href, badges, title, desc, meta, action = "자세히 보기", footer }: {
+  href?: string; badges: BadgeSpec[]; title: string; desc?: string; meta?: ReactNode; action?: string | null; footer?: ReactNode;
 }) {
-  return <button type={type} disabled={disabled} onClick={onClick} className={`${btnCls(kind)} ${className}`}>{children}</button>;
-}
-
-export function Chip({ children, on, onClick }: { children: ReactNode; on?: boolean; onClick?: () => void }) {
-  return (
-    <button type="button" onClick={onClick} aria-pressed={on}
-      className={`min-h-9 shrink-0 rounded-full border px-3.5 text-[13px] font-semibold ${on ? "border-blue-600 bg-blue-600 text-white" : "border-line-strong bg-white text-ink-700 hover:bg-soft"}`}>
-      {children}
-    </button>
+  const body = (
+    <>
+      <div className="flex items-center justify-between gap-2.5">
+        {badges[0] ? <Badge tone={badges[0].tone}>{badges[0].text}</Badge> : <span />}
+        {badges[1] && <Badge tone={badges[1].tone}>{badges[1].text}</Badge>}
+      </div>
+      <h3 className="mb-[5px] mt-[13px] text-[14px] font-bold leading-snug text-navy-950">{title}</h3>
+      {desc && <p className="text-[13px] leading-relaxed text-ink-500">{desc}</p>}
+      <div className="mt-auto pt-[14px]">
+        <div className="flex items-center justify-between gap-3 border-t border-line pt-3 text-[11px] text-ink-400">
+          <span className="min-w-0">{meta}</span>
+          {footer ?? (action ? <b className="shrink-0 text-ink-700">{action} →</b> : null)}
+        </div>
+      </div>
+    </>
   );
+  const cls = "flex h-full flex-col rounded-[14px] border border-line bg-white p-4";
+  return href ? <Link href={href} className={`${cls} hover:border-blue-500/40`}>{body}</Link> : <article className={cls}>{body}</article>;
 }
 
-export type Tone = "blue" | "green" | "amber" | "red" | "gray" | "purple" | "teal";
-export function Badge({ children, tone = "gray" }: { children: ReactNode; tone?: Tone }) {
-  const t = { blue: "bg-blue-100 text-[#2859ae]", green: "bg-green-bg text-green", amber: "bg-amber-bg text-amber", red: "bg-red-bg text-red", gray: "bg-[#eef1f5] text-[#5c6879]", purple: "bg-purple-bg text-purple", teal: "bg-teal-100 text-teal-600" }[tone];
-  return <span className={`inline-flex items-center whitespace-nowrap rounded-full px-[9px] py-1 text-[11px] font-bold leading-none ${t}`}>{children}</span>;
+export function CardGrid({ children, cols = 2 }: { children: ReactNode; cols?: 2 | 3 }) {
+  return <div className={`grid gap-3.5 ${cols === 3 ? "tab:grid-cols-3" : "tab:grid-cols-2"}`}>{children}</div>;
+}
+
+export function MetricCard({ n, title, label }: { n: string; title: string; label: string }) {
+  return (
+    <Panel>
+      <div className="text-[25px] font-extrabold tracking-[-1px] text-navy-950">{n}</div>
+      <b className="text-[14px] text-ink-900">{title}</b>
+      <div className="text-[11px] text-ink-500">{label}</div>
+    </Panel>
+  );
 }
 
 export function Alert({ tone = "info", title, children }: { tone?: "info" | "warn" | "danger"; title?: string; children: ReactNode }) {
@@ -187,12 +257,74 @@ export function Alert({ tone = "info", title, children }: { tone?: "info" | "war
   );
 }
 
-export function Step({ n, title, desc, badge }: { n: ReactNode; title: string; desc?: string; badge?: ReactNode }) {
+export function Step({ n, title, desc, badge, right }: { n: ReactNode; title: string; desc?: string; badge?: BadgeSpec; right?: ReactNode }) {
   return (
     <div className="flex items-start gap-3 border-b border-line py-3 last:border-0">
       <div className="grid h-[25px] w-[25px] shrink-0 place-items-center rounded-full bg-blue-100 text-[11px] font-extrabold text-blue-600">{n}</div>
-      <div className="min-w-0 flex-1"><b className="block text-[14px]">{title}</b>{desc && <small className="text-[12px] text-ink-500">{desc}</small>}</div>
-      {badge && <div className="shrink-0">{badge}</div>}
+      <div className="min-w-0 flex-1"><b className="block text-[14px] leading-snug text-ink-900">{title}</b>{desc && <small className="text-[12px] text-ink-500">{desc}</small>}</div>
+      {badge && <div className="shrink-0"><Badge tone={badge.tone}>{badge.text}</Badge></div>}
+      {right && <div className="shrink-0">{right}</div>}
+    </div>
+  );
+}
+export function StepList({ items }: { items: { title: string; desc?: string; badge?: BadgeSpec; right?: ReactNode; onClick?: () => void }[] }) {
+  return (
+    <Panel className="!py-1">
+      {items.map((it, i) =>
+        it.onClick ? (
+          <button key={it.title + i} type="button" onClick={it.onClick} className="block w-full text-left"><Step n={i + 1} title={it.title} desc={it.desc} badge={it.badge} right={it.right} /></button>
+        ) : <Step key={it.title + i} n={i + 1} title={it.title} desc={it.desc} badge={it.badge} right={it.right} />,
+      )}
+    </Panel>
+  );
+}
+
+export function Field({ label, required, help, error, children }: { label: string; required?: boolean; help?: string; error?: string; children: ReactNode }) {
+  return (
+    <label className="mb-3 flex flex-col gap-1.5">
+      <span className="text-[12px] font-bold text-ink-700">{label} {required && <span className="text-red">*</span>}</span>
+      {children}
+      {error ? <span className="text-[11px] font-bold text-red">{error}</span> : help && <span className="text-[11px] text-ink-400">{help}</span>}
+    </label>
+  );
+}
+export const inputCls = "w-full rounded-[9px] border border-line-strong bg-white px-3 py-2.5 text-ink-900 outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_#3978ea20] focus-visible:outline-none";
+
+export function SelectField({ label, value, onChange, options, help }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; help?: string }) {
+  return (
+    <Field label={label} help={help}>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className={inputCls}>
+        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    </Field>
+  );
+}
+
+/** 검색·질문 입력: 라벨 → 입력칸 → 도움말 + 주요 버튼 */
+export function SearchPanel({ label, value, onChange, onSubmit, placeholder, help, button = "검색", primary = true }: {
+  label: string; value: string; onChange: (v: string) => void; onSubmit: () => void; placeholder?: string; help?: string; button?: string; primary?: boolean;
+}) {
+  return (
+    <Panel>
+      <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }}>
+        <Field label={label} help={help}>
+          <div className="flex gap-2">
+            <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={label} className={`${inputCls} min-w-0 flex-1`} />
+            <button type="submit" className={btnCls(primary ? "primary" : "secondary")}>{button}</button>
+          </div>
+        </Field>
+      </form>
+    </Panel>
+  );
+}
+
+export function DataTable({ head, rows }: { head: string[]; rows: ReactNode[][] }) {
+  return (
+    <div className="overflow-x-auto rounded-[12px] border border-line bg-white">
+      <table className="w-full min-w-[580px] border-collapse text-[13px]">
+        <thead><tr className="bg-[#f7f9fc] text-left text-[12px] text-ink-500">{head.map((h) => <th key={h} className="border-b border-line px-[13px] py-[11px] font-bold">{h}</th>)}</tr></thead>
+        <tbody>{rows.map((r, i) => <tr key={i} className="border-b border-[#edf0f4] last:border-0">{r.map((c, j) => <td key={j} className="px-[13px] py-3 text-ink-700">{c}</td>)}</tr>)}</tbody>
+      </table>
     </div>
   );
 }
@@ -206,52 +338,38 @@ function CopyBtn({ text }: { text: string }) {
   );
 }
 
-/* ───────── 도메인 UI: 법률 근거 표시 (AI 요약과 원문 분리, 출처 메타데이터) ───────── */
-export function LawCard({ l, compact }: { l: LawRef; compact?: boolean }) {
+/** 법률 근거 표시: 법령·판례 모두 같은 모양 */
+export function LegalCard({ kind, title, summary, url, copy, deadline, meta, compact }: {
+  kind: "law" | "prec"; title: string; summary: string; url: string; copy: string; deadline?: string; meta: string; compact?: boolean;
+}) {
   return (
-    <Card className="!p-4">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[12px] font-bold text-ink-500">관련 법령</span>
+    <Panel>
+      <div className="flex items-center justify-between gap-2.5">
+        <b className="text-[13px] text-ink-900">{kind === "law" ? "관련 법령" : "관련 판례"}</b>
         <Badge tone="green">공식 출처 연결</Badge>
       </div>
-      <p className="mb-1 mt-2.5 text-[15px] font-bold text-navy-950">「{l.law}」 {l.article} {l.title}</p>
-      {!compact && <p className="text-[14px] leading-relaxed text-ink-700">{l.summary}</p>}
-      {l.deadline && <div className="mt-2.5"><Badge tone="amber">기한 {l.deadline.days}일 · 기산점: {l.deadline.from}</Badge></div>}
-      {!compact && (
-        <>
-          <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 rounded-[10px] bg-soft p-3 text-[11px] text-ink-500 tab:grid-cols-4">
-            <div><dt className="font-bold text-ink-700">출처</dt><dd>국가법령정보센터</dd></div>
-            <div><dt className="font-bold text-ink-700">적용 기준</dt><dd>현행 법령</dd></div>
-            <div><dt className="font-bold text-ink-700">시행일·연혁</dt><dd>원문에서 확인</dd></div>
-            <div><dt className="font-bold text-ink-700">조회일</dt><dd>{DATA_CHECKED}</dd></div>
-          </dl>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            <a href={l.url} target="_blank" rel="noreferrer" className={btnCls("secondary")}>법령 원문 보기 <ExternalLink size={13} /></a>
-            <CopyBtn text={`「${l.law}」 ${l.article}(${l.title})\n${l.summary}\n출처: ${l.url}`} />
-          </div>
-        </>
-      )}
-      {compact && <a href={l.url} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-[12px] font-bold text-blue-600">원문 보기 <ExternalLink size={12} /></a>}
-    </Card>
+      <p className="mb-1 mt-3 text-[14px] font-bold leading-snug text-navy-950">{title}</p>
+      <p className="text-[13px] leading-relaxed text-ink-500">{summary}</p>
+      {deadline && <div className="mt-2.5"><Badge tone="amber">{deadline}</Badge></div>}
+      {!compact && <Alert tone="info">요약은 참고 정보입니다. 적용 조문·시행일·부칙과 사건 발생 시점을 원문으로 대조하세요.</Alert>}
+      <div className="mt-3 flex flex-wrap gap-[9px]">
+        <a href={url} target="_blank" rel="noreferrer" className={btnCls("secondary")}>{kind === "law" ? "법령 원문 보기" : "판결 원문 보기"} <ExternalLink size={13} /></a>
+        {!compact && <CopyBtn text={copy} />}
+      </div>
+      <p className="mt-2.5 text-[11px] text-ink-400">{meta}</p>
+    </Panel>
   );
 }
-
-export function PrecCard({ p }: { p: Precedent }) {
-  return (
-    <Card className="!p-4">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[12px] font-bold text-ink-500">관련 판례 · {p.court} {p.date} 선고</span>
-        <Badge tone="green">공식 출처 연결</Badge>
-      </div>
-      <p className="mb-1 mt-2.5 text-[15px] font-bold text-navy-950">{p.caseNo} · {p.title}</p>
-      <p className="text-[14px] leading-relaxed text-ink-700">{p.gist}</p>
-      <p className="mt-1.5 text-[11px] text-ink-400">판결 요지는 이해를 돕기 위해 풀어 쓴 것입니다 · 조회일 {DATA_CHECKED}</p>
-      <div className="mt-2 flex flex-wrap gap-1.5">
-        <a href={p.url} target="_blank" rel="noreferrer" className={btnCls("secondary")}>판결 원문 보기 <ExternalLink size={13} /></a>
-        <CopyBtn text={`${p.court} ${p.date} 선고 ${p.caseNo} 판결 — ${p.gist}\n출처: ${p.url}`} />
-      </div>
-    </Card>
-  );
+export function LawCard({ l, compact, highlight }: { l: LawRef; compact?: boolean; highlight?: boolean }) {
+  return <div id={l.id} className={highlight ? "rounded-[18px] ring-2 ring-blue-500" : ""}><LegalCard kind="law" compact={compact} title={`「${l.law}」 ${l.article} ${l.title}`} summary={l.summary} url={l.url}
+    deadline={l.deadline ? `기한 ${l.deadline.days}일 · 기산점: ${l.deadline.from}` : undefined}
+    copy={`「${l.law}」 ${l.article}(${l.title})\n${l.summary}\n출처: ${l.url}`}
+    meta={`출처 국가법령정보센터 · 적용 기준 현행 법령 · 시행일·연혁 원문 확인 · 조회일 ${DATA_CHECKED}`} /></div>;
+}
+export function PrecCard({ p, compact }: { p: Precedent; compact?: boolean }) {
+  return <LegalCard kind="prec" compact={compact} title={`${p.court} ${p.date} 선고 ${p.caseNo} · ${p.title}`} summary={p.gist} url={p.url}
+    copy={`${p.court} ${p.date} 선고 ${p.caseNo} 판결 — ${p.gist}\n출처: ${p.url}`}
+    meta={`출처 국가법령정보센터 · 판결 요지는 풀어 쓴 것 · 조회일 ${DATA_CHECKED}`} />;
 }
 
 export function Disclaimer() {
@@ -265,30 +383,56 @@ export function Disclaimer() {
 }
 
 export function Empty({ children }: { children: ReactNode }) {
-  return <div className="rounded-[18px] border border-dashed border-line-strong bg-white/60 p-6 text-center text-[14px] text-ink-500">{children}</div>;
+  return <div className="rounded-[14px] border border-dashed border-line-strong bg-white/60 p-6 text-center text-[13px] text-ink-500">{children}</div>;
 }
 
-export function Field({ label, required, help, children }: { label: string; required?: boolean; help?: string; children: ReactNode }) {
+/** 제목 + 설명 + 오른쪽 행동 버튼 하나 */
+export function ActionPanel({ title, desc, action }: { title: string; desc?: string; action: ReactNode }) {
   return (
-    <label className="mb-3 flex flex-col gap-1.5">
-      <span className="text-[12px] font-bold text-ink-700">{label} {required && <span className="text-red">*</span>}</span>
-      {children}
-      {help && <span className="text-[11px] text-ink-400">{help}</span>}
-    </label>
+    <Panel className="flex flex-col gap-3 tab:flex-row tab:items-center">
+      <div className="flex-1"><p className="t-title">{title}</p>{desc && <p className="t-desc">{desc}</p>}</div>
+      {action}
+    </Panel>
   );
 }
 
-export const inputCls = "w-full rounded-[9px] border border-line-strong bg-white px-3 py-2.5 text-ink-900 outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_#3978ea20]";
+/** 점 목록 */
+export function BulletList({ items, empty }: { items: string[]; empty?: string }) {
+  return items.length ? <ul className="t-body space-y-1.5">{items.map((x) => <li key={x}>· {x}</li>)}</ul> : <p className="t-meta">{empty ?? "해당 없음"}</p>;
+}
 
-export function ListLink({ href, icon, title, desc, right }: { href: string; icon?: ReactNode; title: string; desc?: string; right?: ReactNode }) {
+/** 제목 있는 목록 패널 */
+export function ListPanel({ title, items, badge }: { title: string; items: string[]; badge?: BadgeSpec }) {
   return (
-    <Link href={href} className="flex items-center gap-3 rounded-[14px] border border-line bg-white p-3.5 shadow-[var(--shadow-sm)] hover:border-blue-500/40">
-      {icon && <div className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] bg-blue-50 text-blue-600">{icon}</div>}
-      <div className="min-w-0 flex-1">
-        <div className="font-bold leading-snug text-navy-950">{title}</div>
-        {desc && <div className="mt-0.5 line-clamp-2 text-[12px] text-ink-500">{desc}</div>}
-      </div>
-      {right ?? <span className="text-ink-400">›</span>}
-    </Link>
+    <Panel>
+      <div className="mb-2.5 flex items-center justify-between gap-2"><p className="t-title">{title}</p>{badge && <Badge tone={badge.tone}>{badge.text}</Badge>}</div>
+      <BulletList items={items} />
+    </Panel>
   );
+}
+
+/** 패널 안의 작은 테두리 상자 (그림자 없음) */
+export function SubPanel({ children, badge }: { children: ReactNode; badge?: BadgeSpec }) {
+  return <div className="rounded-[14px] border border-line p-3.5">{badge && <div className="mb-2"><Badge tone={badge.tone}>{badge.text}</Badge></div>}{children}</div>;
+}
+
+/** 진행 중 안내 (info 알림 + 회전 아이콘) */
+export function Loading({ children }: { children: ReactNode }) {
+  return (
+    <div className="my-2.5 flex items-center gap-2.5 rounded-[11px] border border-[#d9e5ff] bg-blue-50 px-[15px] py-[13px] text-[13px] text-[#345a9b]">
+      <Loader2 size={16} className="shrink-0 animate-spin" />{children}
+    </div>
+  );
+}
+
+/** 아이콘만 있는 둥근 버튼 (선택 상태 표시) */
+export function IconBtn({ label, on, tone = "blue", onClick, children }: { label: string; on?: boolean; tone?: "blue" | "red"; onClick: () => void; children: ReactNode }) {
+  const onCls = tone === "red" ? "bg-red-bg text-red" : "bg-blue-100 text-blue-600";
+  return <button type="button" aria-label={label} aria-pressed={on} onClick={onClick} className={`grid h-10 w-10 place-items-center rounded-full ${on ? onCls : "text-ink-500 hover:bg-canvas"}`}>{children}</button>;
+}
+
+/** 글자 링크형 작은 버튼 (카드 바닥줄 등) */
+export function TextBtn({ children, onClick, tone = "default" }: { children: ReactNode; onClick: () => void; tone?: "default" | "muted" | "danger" }) {
+  const t = { default: "text-ink-700", muted: "text-ink-500", danger: "text-red" }[tone];
+  return <button type="button" onClick={onClick} className={`t-label min-h-9 ${t}`}>{children}</button>;
 }

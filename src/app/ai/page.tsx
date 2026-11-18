@@ -2,13 +2,13 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { Loader2, MessageCircle, Plus, SendHorizontal } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { disputeById } from "@/lib/data";
 import { detectFacts, maskSensitive, type Facts } from "@/lib/analyze";
 import { analyzeQuestion, nextFollowUp } from "@/lib/chat";
 import { getDB, now, uid, update, useDB, type Conversation, type Msg } from "@/lib/store";
 import AnalysisCard from "@/components/AnalysisCard";
-import { Alert, Badge, Card, Chip, Disclaimer, Empty, Eyebrow, Field, H2, Page, Step, TopBar, btnCls, inputCls } from "@/components/ui";
+import { Alert, Badge, Btn, CardGrid, CaseCard, Disclaimer, Empty, Field, Loading, Page, PageHeader, Panel, Section, StepList, TextBtn, TopBar, btnCls, inputCls } from "@/components/ui";
 
 const EXAMPLES = [
   "조합에 총회 회의록 열람을 요청했는데 한 달째 답이 없어요",
@@ -24,31 +24,37 @@ function useStatus() {
   return ai;
 }
 
-function Composer({ onSend, busy, placeholder, autoFocus }: { onSend: (t: string) => void; busy: boolean; placeholder: string; autoFocus?: boolean }) {
+function Composer({ onSend, busy, placeholder, label }: { onSend: (t: string) => void; busy: boolean; placeholder: string; label: string }) {
   const [text, setText] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     const el = ref.current; if (!el) return;
-    el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 160) + "px";
+    el.style.height = "auto"; el.style.height = Math.min(el.scrollHeight, 140) + "px";
   }, [text]);
   const send = () => { const t = text.trim(); if (!t || busy) return; onSend(t); setText(""); };
   return (
-    <div className="flex items-end gap-2 rounded-[14px] border border-line-strong bg-white p-1.5 pl-3 focus-within:border-blue-500 focus-within:shadow-[0_0_0_3px_#3978ea20]">
-      <textarea ref={ref} rows={1} value={text} maxLength={MAX} autoFocus={autoFocus} aria-label="질문 입력"
+    <div className="flex items-end gap-2">
+      <textarea ref={ref} rows={1} value={text} maxLength={MAX} aria-label={label}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }}
-        placeholder={placeholder} className="max-h-40 min-h-[40px] flex-1 resize-none bg-transparent py-2 leading-snug outline-none focus-visible:outline-none" />
-      <button type="button" onClick={send} disabled={!text.trim() || busy} aria-label="보내기" className={`${btnCls("primary")} !px-3`}>
-        {busy ? <Loader2 size={18} className="animate-spin" /> : <SendHorizontal size={18} />}
+        placeholder={placeholder} className={`${inputCls} max-h-36 min-h-11 flex-1 resize-none leading-snug`} />
+      <button type="button" onClick={send} disabled={!text.trim() || busy} className={btnCls("primary")}>
+        {busy ? <Loader2 size={16} className="animate-spin" /> : "보내기"}
       </button>
     </div>
   );
 }
 
-function Bubble({ m }: { m: Msg }) {
-  if (m.role === "user")
-    return <div className="flex justify-end"><div className="max-w-[85%] whitespace-pre-wrap rounded-[18px] rounded-br-[6px] bg-blue-600 px-4 py-2.5 text-[15px] leading-relaxed text-white">{m.text}</div></div>;
-  return null;
+function QuestionPanel({ m }: { m: Msg }) {
+  return (
+    <Panel>
+      <div className="flex items-center justify-between gap-2.5">
+        <Badge tone="gray">내 입력</Badge>
+        <span className="t-meta">{new Date(m.at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}</span>
+      </div>
+      <p className="t-text mt-2.5 whitespace-pre-wrap">{m.text}</p>
+    </Panel>
+  );
 }
 
 function Chat({ c, aiOn }: { c: Conversation; aiOn: boolean | null }) {
@@ -122,42 +128,41 @@ function Chat({ c, aiOn }: { c: Conversation; aiOn: boolean | null }) {
   return (
     <>
       <div className="space-y-3 pb-4">
-        {topic && <div className="flex justify-center"><Badge tone="blue">상담 주제 · {topic.name}</Badge></div>}
+        {topic && <Alert tone="info" title="상담 주제">{topic.name} 기준으로 분석합니다.</Alert>}
         {c.messages.map((m, i) => {
-          if (m.role === "user") return <Bubble key={i} m={m} />;
+          if (m.role === "user") return <QuestionPanel key={i} m={m} />;
           if (m.analysis) return <div key={i} ref={i === c.messages.length - 1 ? lastRef : undefined} className="scroll-mt-[76px]"><AnalysisCard a={m.analysis} note={m.note} /></div>;
           const isActive = i === c.messages.length - 1 && !!m.followUp && !busy;
           return (
-            <div key={i} className="max-w-[92%] rounded-[18px] rounded-bl-[6px] border border-line bg-white px-4 py-3 shadow-[var(--shadow-sm)]">
-              <div className="mb-1 flex items-center gap-1.5 text-[12px] font-bold text-blue-600"><MessageCircle size={14} /> 정확한 분석을 위해 확인할게요</div>
-              <p className="text-[15px] font-semibold text-navy-950">{m.text}</p>
+            <Panel key={i}>
+              <div className="flex items-center justify-between gap-2.5">
+                <Badge tone="blue">추가 확인</Badge>
+                <Badge tone={isActive ? "amber" : "green"}>{isActive ? "답변 필요" : "확인 완료"}</Badge>
+              </div>
+              <p className="t-title mb-1 mt-3">{m.text}</p>
+              <p className="t-sub">정확한 분석을 위해 확인합니다. 보기에 없으면 아래 입력칸에 직접 적어도 됩니다.</p>
               {m.followUp && isActive && (
                 <>
-                  <div className="mt-2.5 flex flex-wrap gap-2">
-                    {m.followUp.options.map((o) => <Chip key={o} onClick={() => answer(m.followUp!.key, o)}>{o}</Chip>)}
+                  <div className="mt-3 flex flex-wrap gap-[9px]">
+                    {m.followUp.options.map((o) => <Btn key={o} kind="secondary" onClick={() => answer(m.followUp!.key, o)}>{o}</Btn>)}
                   </div>
-                  <div className="mt-2.5 flex flex-wrap gap-1">
-                    <button type="button" className={btnCls("ghost")} onClick={() => skip(m.followUp!.key)}>건너뛰기</button>
-                    <button type="button" className={btnCls("ghost")} onClick={analyzeNow}>바로 분석하기 →</button>
+                  <div className="mt-[14px] flex items-center justify-between border-t border-line pt-3">
+                    <TextBtn tone="muted" onClick={() => skip(m.followUp!.key)}>건너뛰기</TextBtn>
+                    <TextBtn onClick={analyzeNow}>바로 분석하기 →</TextBtn>
                   </div>
-                  <p className="mt-1 text-[11px] text-ink-400">보기에 없으면 아래 입력창에 직접 적어도 됩니다.</p>
                 </>
               )}
-            </div>
+            </Panel>
           );
         })}
-        {busy && (
-          <div className="flex items-center gap-2 rounded-[14px] border border-line bg-white px-4 py-3 text-[14px] text-ink-500">
-            <Loader2 size={16} className="animate-spin text-blue-600" /> {aiOn ? "AI가 법령·판례 근거를 대조하며 분석하고 있어요…" : "관련 분쟁 유형과 법령을 찾아 분석하고 있어요…"}
-          </div>
-        )}
+        {busy && <Loading>{aiOn ? "AI가 법령·판례 근거를 대조하며 분석하고 있어요…" : "관련 분쟁 유형과 법령을 찾아 분석하고 있어요…"}</Loading>}
         <div ref={endRef} />
       </div>
 
       {/* 입력창: 폰은 하단 탭 위, 태블릿·PC는 화면 아래 고정 */}
       <div className="no-print fixed inset-x-0 z-30 border-t border-line bg-canvas/95 px-3 py-2.5 backdrop-blur bottom-[calc(56px+env(safe-area-inset-bottom))] tab:bottom-0 tab:left-[210px] desk:left-[252px]">
         <div className="mx-auto max-w-[960px]">
-          <Composer busy={busy} onSend={send} placeholder={activeFollow ? "직접 답하기…" : "이어서 질문하기 (예: 그럼 언제까지 해야 하나요?)"} />
+          <Composer busy={busy} onSend={send} label={activeFollow ? "직접 답하기" : "이어서 질문하기"} placeholder={activeFollow ? "직접 답하기" : "이어서 질문하기 (예: 그럼 언제까지 해야 하나요?)"} />
         </div>
       </div>
     </>
@@ -175,8 +180,8 @@ function StartForm({ onStart, topicName }: { onStart: (t: string) => void; topic
           placeholder={topicName ? `예) ${topicName} 관련해서 조합에서 통보를 받았는데…` : "예) 조합에 총회 회의록 열람을 요청했는데 한 달째 답이 없어요"}
           className={`${inputCls} min-h-[112px] resize-y leading-relaxed`} aria-invalid={touched && empty} />
       </Field>
-      <div className="-mt-1 mb-3 flex items-center justify-between text-[11px]">
-        <span className="text-red">{touched && empty ? "상황 설명을 입력해 주세요." : ""}</span>
+      <div className="t-meta -mt-1 mb-3 flex items-center justify-between">
+        <span className="font-bold text-red">{touched && empty ? "상황 설명을 입력해 주세요." : ""}</span>
         <span className="text-ink-400">{text.length} / {MAX}</span>
       </div>
       <Alert tone="info" title="개인정보 보호">주민등록번호·휴대폰 번호는 자동으로 가린 뒤 분석하며, 상담 내용은 이 기기에만 저장됩니다.</Alert>
@@ -212,74 +217,55 @@ function Start({ aiOn }: { aiOn: boolean | null }) {
 
   return (
     <Page>
-      {/* 디자인 시스템: eyebrow → h1 → lead */}
-      <Eyebrow>AI legal assistant</Eyebrow>
-      <h1 className="mb-[9px] mt-[7px] text-[24px] font-bold tracking-[-0.7px] text-navy-950 tab:text-[30px] tab:tracking-[-1.2px]">내 상황 분석하기</h1>
-      <p className="max-w-[720px] text-[14px] text-ink-500">상황을 적어 주시면 부족한 정보를 몇 가지 확인한 뒤 쟁점·근거 법령·대응 방법을 정리해 드립니다.</p>
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {aiOn === null ? <Badge>연결 확인 중</Badge> : aiOn ? <Badge tone="blue">AI 분석 연결됨</Badge> : <Badge tone="gray">기본 분석 모드</Badge>}
-        <Badge tone="green">확인된 법령·판례만 인용</Badge>
-        {topic && <Badge tone="purple">상담 주제 · {topic.short}</Badge>}
-      </div>
+      <PageHeader eyebrow="AI legal assistant" title="내 상황 분석하기"
+        lead="상황을 적어 주시면 부족한 정보를 몇 가지 확인한 뒤 쟁점·근거 법령·대응 방법을 정리해 드립니다."
+        badges={[
+          aiOn === null ? { text: "연결 확인 중", tone: "gray" } : aiOn ? { text: "AI 분석 연결됨", tone: "blue" } : { text: "기본 분석 모드", tone: "gray" },
+          { text: "확인된 법령·판례만 인용", tone: "green" },
+          ...(topic ? [{ text: `상담 주제 · ${topic.short}`, tone: "purple" as const }] : []),
+        ]} />
 
-      {/* 입력 컴포넌트: 패널 안 라벨·입력·도움말·검증 메시지 */}
-      <Card className="mt-5">
-        <StartForm onStart={start} topicName={topic?.short} />
-      </Card>
+      <Panel className="mt-5"><StartForm onStart={start} topicName={topic?.short} /></Panel>
 
-      {/* 진행 순서: 사건 관리 UI 단계 패턴 */}
-      <H2 desc="상담은 이 순서로 진행됩니다" kicker="PROCESS">진행 순서</H2>
-      <Card className="!py-1">
-        <Step n="1" title="상황 입력" desc="겪고 있는 일을 편하게 적습니다" />
-        <Step n="2" title="추가 확인" desc="사업 유형·내 지위·사업 단계를 보기에서 고릅니다" />
-        <Step n="3" title="분석 결과" desc="쟁점·근거 법령·판례·대응 방법을 정리합니다" />
-        <Step n="4" title="다음 행동" desc="필요한 서류 작성과 사건 관리로 이어집니다" />
-      </Card>
+      <Section title="진행 순서" desc="상담은 이 순서로 진행됩니다" kicker="PROCESS">
+        <StepList items={[
+          { title: "상황 입력", desc: "겪고 있는 일을 편하게 적습니다" },
+          { title: "추가 확인", desc: "사업 유형·내 지위·사업 단계를 보기에서 고릅니다" },
+          { title: "분석 결과", desc: "쟁점·근거 법령·판례·대응 방법을 정리합니다" },
+          { title: "다음 행동", desc: "필요한 서류 작성과 사건 관리로 이어집니다" },
+        ]} />
+      </Section>
 
-      <H2 desc="누르면 바로 상담이 시작됩니다" kicker="EXAMPLES">이렇게 물어보세요</H2>
-      <Card className="!py-1">
-        {EXAMPLES.map((e, i) => (
-          <button key={e} type="button" onClick={() => start(e)} className="flex w-full items-center gap-3 border-b border-line py-3 text-left last:border-0">
-            <span className="grid h-[25px] w-[25px] shrink-0 place-items-center rounded-full bg-blue-100 text-[11px] font-extrabold text-blue-600">{i + 1}</span>
-            <span className="min-w-0 flex-1 text-[14px] text-ink-900">{e}</span>
-            <span className="shrink-0 text-[12px] font-bold text-ink-700">시작 →</span>
-          </button>
-        ))}
-      </Card>
+      <Section title="이렇게 물어보세요" desc="누르면 바로 상담이 시작됩니다" kicker="EXAMPLES">
+        <StepList items={EXAMPLES.map((e) => ({ title: e, onClick: () => start(e), right: <span className="t-label">시작 →</span> }))} />
+      </Section>
 
-      <H2 desc="이 기기에 저장된 상담" kicker="HISTORY">최근 상담</H2>
-      {db.conversations.length === 0 ? <Empty>아직 상담 기록이 없습니다.</Empty> : (
-        <div className="grid gap-3.5 tab:grid-cols-2">
-          {db.conversations.map((c) => {
-            const done = c.messages.find((m) => m.analysis)?.analysis;
-            const kind = done?.disputes[0]?.name.split(" ")[0] || (c.topic ? disputeById(c.topic)?.short : undefined);
-            return (
-              <article key={c.id} className="rounded-[14px] border border-line bg-white p-4">
-                <div className="flex items-center justify-between gap-2.5">
-                  <Badge tone="blue">{kind || "분류 전"}</Badge>
-                  <Badge tone={done ? "green" : "amber"}>{done ? "분석 완료" : "답변 대기"}</Badge>
-                </div>
-                <h3 className="mb-[5px] mt-[13px] line-clamp-2 text-[14px] font-bold text-navy-950">{c.title}</h3>
-                <p className="text-[12px] text-ink-500">질문 {c.messages.filter((m) => m.role === "user").length}건 · 분석 {c.messages.filter((m) => m.analysis).length}건</p>
-                <div className="mt-[14px] flex items-center justify-between border-t border-line pt-3 text-[11px] text-ink-400">
-                  <span>최근 업데이트 {new Date(c.updatedAt).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
-                  <span className="flex items-center gap-3">
-                    {confirmDel === c.id ? (
-                      <>
-                        <button className="font-bold text-red" onClick={() => { update((d) => { d.conversations = d.conversations.filter((x) => x.id !== c.id); }); setConfirmDel(null); }}>삭제 확인</button>
-                        <button className="font-bold text-ink-500" onClick={() => setConfirmDel(null)}>취소</button>
-                      </>
-                    ) : (
-                      <button aria-label="상담 삭제" className="text-ink-400 hover:text-red" onClick={() => setConfirmDel(c.id)}>삭제</button>
-                    )}
-                    <Link href={`/ai?c=${c.id}`} className="font-bold text-ink-700">상담 보기 →</Link>
-                  </span>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
+      <Section title="최근 상담" desc="이 기기에 저장된 상담" kicker="HISTORY">
+        {db.conversations.length === 0 ? <Empty>아직 상담 기록이 없습니다.</Empty> : (
+          <CardGrid>
+            {db.conversations.map((c) => {
+              const done = c.messages.find((m) => m.analysis)?.analysis;
+              const kind = done?.disputes[0]?.name.split(" ")[0] || (c.topic ? disputeById(c.topic)?.short : undefined);
+              return (
+                <CaseCard key={c.id} badges={[{ text: kind || "분류 전", tone: "blue" }, done ? { text: "분석 완료", tone: "green" } : { text: "답변 대기", tone: "amber" }]}
+                  title={c.title} desc={`질문 ${c.messages.filter((m) => m.role === "user").length}건 · 분석 ${c.messages.filter((m) => m.analysis).length}건`}
+                  meta={`최근 업데이트 ${new Date(c.updatedAt).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}`}
+                  footer={
+                    <span className="flex shrink-0 items-center gap-3">
+                      {confirmDel === c.id ? (
+                        <>
+                          <TextBtn tone="danger" onClick={() => { update((d) => { d.conversations = d.conversations.filter((x) => x.id !== c.id); }); setConfirmDel(null); }}>삭제 확인</TextBtn>
+                          <TextBtn tone="muted" onClick={() => setConfirmDel(null)}>취소</TextBtn>
+                        </>
+                      ) : <TextBtn tone="muted" onClick={() => setConfirmDel(c.id)}>삭제</TextBtn>}
+                      <Link href={`/ai?c=${c.id}`} className="t-label">상담 보기 →</Link>
+                    </span>
+                  } />
+              );
+            })}
+          </CardGrid>
+        )}
+      </Section>
       <Disclaimer />
     </Page>
   );

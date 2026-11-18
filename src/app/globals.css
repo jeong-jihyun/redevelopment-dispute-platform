@@ -59,3 +59,13 @@ input, textarea, select { font-size: 16px; } /* 모바일 확대 방지 */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
 @media print { .no-print { display: none !important; } }
+
+/* 글자 역할 (docs/ui-patterns.md 4. 글자 크기) — 화면 파일은 text-[..px] 대신 이것만 쓴다 */
+@utility t-title { font-size: 14px; font-weight: 700; line-height: 1.45; color: var(--color-navy-950); }
+@utility t-body { font-size: 13px; line-height: 1.65; color: var(--color-ink-700); }
+@utility t-desc { font-size: 13px; line-height: 1.6; color: var(--color-ink-500); }
+@utility t-label { font-size: 12px; font-weight: 700; color: var(--color-ink-700); }
+@utility t-sub { font-size: 12px; color: var(--color-ink-500); }
+@utility t-meta { font-size: 11px; color: var(--color-ink-400); }
+@utility t-kicker { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--color-ink-400); }
+@utility t-text { font-size: 14px; line-height: 1.65; color: var(--color-ink-900); }

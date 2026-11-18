@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:design": "node scripts/check-design.mjs",
+    "prebuild": "node scripts/check-design.mjs"
   },
   "dependencies": {
     "docx": "^9.15.4",
