@@ -6,7 +6,7 @@ import { CalendarClock, FileText, FolderLock, MessageCircle, Search } from "luci
 import { DISPUTES, LAWS, PRECEDENTS, STAGES, TEMPLATES } from "@/lib/data";
 import { useDB } from "@/lib/store";
 import { dday } from "@/lib/analyze";
-import { Badge, Card, Disclaimer, Eyebrow, H2, ICONS, Page, PrecCard, TopBar, btnCls } from "@/components/ui";
+import { Badge, Card, Disclaimer, Eyebrow, H2, ICONS, Page, PrecCard, TopBar, btnCls, type Tone } from "@/components/ui";
 
 const EXAMPLES = ["조합에서 총회 회의록을 공개하지 않습니다", "분양신청을 못 해서 현금청산 대상이 됐어요", "세입자인데 주거이전비를 받을 수 있나요"];
 
@@ -22,10 +22,15 @@ export default function Home() {
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(0, 3);
 
-  const quick = [
-    { href: "/ai", icon: MessageCircle, n: String(DISPUTES.length).padStart(2, "0"), unit: "분쟁 유형", title: "AI 법률 도우미", desc: "상황을 적으면 쟁점·근거·대응 방법 정리" },
-    { href: "/docs", icon: FileText, n: String(TEMPLATES.length).padStart(2, "0"), unit: "서류 양식", title: "서류 자동 작성", desc: "질문에 답하면 내용증명·청구서 초안 완성" },
-    { href: "/cases", icon: FolderLock, n: String(db.cases.length).padStart(2, "0"), unit: "내 사건", title: "사건 관리", desc: "증거자료·일정·참여자를 사건별로 관리" },
+  const analyzed = db.conversations.filter((c) => c.messages.some((m) => m.analysis)).length;
+  // 디자인 시스템 '카드 및 요약' 패턴: 상단 배지 2개 · 제목 · 설명 · 구분선 아래 메타/바로가기
+  const services: { href: string; icon: typeof MessageCircle; cat: string; status: { text: string; tone: Tone }; title: string; desc: string; meta: string; go: string }[] = [
+    { href: "/ai", icon: MessageCircle, cat: "AI 상담", status: analyzed ? { text: `분석 완료 ${analyzed}건`, tone: "green" } : { text: "바로 이용 가능", tone: "blue" },
+      title: "AI 법률 도우미", desc: "상황을 적으면 쟁점·근거 법령·대응 방법을 정리합니다.", meta: `상담 기록 ${db.conversations.length}건`, go: "상담 시작" },
+    { href: "/docs", icon: FileText, cat: "서류 작성", status: { text: "3단계 준비 중", tone: "gray" },
+      title: "서류 자동 작성", desc: "질문에 답하면 내용증명·청구서 초안을 만듭니다.", meta: `양식 ${TEMPLATES.length}종 · DOCX·PDF`, go: "자세히 보기" },
+    { href: "/cases", icon: FolderLock, cat: "사건 관리", status: { text: "4단계 준비 중", tone: "gray" },
+      title: "내 사건 관리", desc: "증거자료·일정·참여자를 사건별로 관리합니다.", meta: `등록 사건 ${db.cases.length}건`, go: "자세히 보기" },
   ];
 
   return (
@@ -51,14 +56,20 @@ export default function Home() {
           </div>
         </section>
 
-        {/* 주요 서비스 */}
-        <div className="mt-4 grid gap-3.5 tab:grid-cols-3">
-          {quick.map(({ href, icon: Icon, n, unit, title, desc }) => (
-            <Link key={href} href={href} className="flex items-center gap-4 rounded-[18px] border border-line bg-white p-4 shadow-[var(--shadow-sm)] hover:border-blue-500/40 tab:block tab:p-5">
-              <div className="grid h-11 w-11 shrink-0 place-items-center rounded-[12px] bg-blue-50 text-blue-600"><Icon size={22} /></div>
-              <div className="min-w-0 flex-1 tab:mt-3">
-                <div className="flex items-baseline gap-2"><b className="text-[15px] text-navy-950">{title}</b><span className="hidden text-[22px] font-extrabold tracking-[-1px] text-navy-950 desk:inline">{n}</span><span className="hidden text-[10px] text-ink-500 desk:inline">{unit}</span></div>
-                <div className="text-[12px] text-ink-500">{desc}</div>
+        {/* 주요 서비스: 디자인 시스템 case-card */}
+        <H2 desc="검색 다음에 이어서 할 수 있는 일" kicker="SERVICES">주요 서비스</H2>
+        <div className="grid gap-3.5 tab:grid-cols-3">
+          {services.map(({ href, icon: Icon, cat, status, title, desc, meta, go }) => (
+            <Link key={href} href={href} className="flex flex-col rounded-[14px] border border-line bg-white p-4 hover:border-blue-500/40">
+              <div className="flex items-center justify-between gap-2.5">
+                <Badge tone="blue">{cat}</Badge>
+                <Badge tone={status.tone}>{status.text}</Badge>
+              </div>
+              <h3 className="mb-[5px] mt-[13px] flex items-center gap-2 text-[15px] font-bold text-navy-950"><Icon size={17} className="shrink-0 text-blue-600" />{title}</h3>
+              <p className="mb-[14px] text-[13px] text-ink-500">{desc}</p>
+              <div className="mt-auto flex items-center justify-between border-t border-line pt-3 text-[11px] text-ink-400">
+                <span>{meta}</span>
+                <b className="text-ink-700">{go} →</b>
               </div>
             </Link>
           ))}
@@ -134,7 +145,7 @@ export default function Home() {
             <b className="mt-1 block text-[16px] text-navy-950">내 상황을 정리해서 대응 방법을 찾아볼까요?</b>
             <p className="text-[13px] text-ink-500">사업 단계·내 지위·언제 무슨 일이 있었는지 순서로 물어봅니다.</p>
           </div>
-          <Link href="/ai" className={`${btnCls("primary")} w-full tab:w-auto`}><MessageCircle size={16} /> AI 상담 시작</Link>
+          <Link href="/ai" className={`${btnCls("secondary")} w-full tab:w-auto`}><MessageCircle size={16} /> AI 상담 시작</Link>
         </Card>
         <Disclaimer />
       </Page>
