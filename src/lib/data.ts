@@ -1,6 +1,8 @@
 // 기준 데이터 — 설계서(요구사항 v0.1, 기본설계 v1.0) 기준
 // 법령 요약은 공식 원문을 쉽게 풀어 쓴 것이며, 실제 적용 전 원문 링크로 반드시 확인해야 한다.
 
+export const DATA_CHECKED = "2026.11.18"; // 조문 번호·기한을 공식·판례 자료로 대조한 날
+
 export const lawUrl = (law: string, article?: string) =>
   `https://www.law.go.kr/${encodeURIComponent("법령")}/${encodeURIComponent(law.replace(/\s/g, ""))}${
     article ? "/" + encodeURIComponent(article) : ""

@@ -28,7 +28,10 @@ export function searchLaws(q: string): LawRef[] {
     const hay = `${l.law}${l.short}${l.article}${l.title}${l.summary}`;
     let s = fromDisputes.has(l.id) ? 2 : 0;
     // 조사(을/를/이/가 등)를 떼고 비교
-    for (const w of words) if (hay.includes(w) || (w.length >= 3 && hay.includes(w.slice(0, -1)))) s += 1;
+    for (const w of words) {
+      const stems = [w, w.length >= 3 ? w.slice(0, -1) : "", w.length >= 4 ? w.slice(0, -2) : ""].filter((x) => x.length >= 2);
+      if (stems.some((x) => hay.includes(x))) s += 1;
+    }
     return { l, s };
   })
     .filter((x) => x.s > 0)

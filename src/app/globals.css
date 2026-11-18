@@ -1,33 +1,61 @@
 @import "tailwindcss";
 
+/* 도시정비 분쟁지원 플랫폼 · Design System v1.0 토큰 */
 @theme {
-  --color-ink: #16213a;
-  --color-navy: #1b2d52;
-  --color-navy-2: #2a4277;
-  --color-paper: #f5f4ef;
-  --color-line: #e3e1d8;
-  --color-muted: #6b6f7b;
-  --color-amber: #d98e20;
-  --color-amber-soft: #fbf0dc;
-  --color-good: #1f7a55;
-  --color-good-soft: #e3f3ec;
-  --color-bad: #b42318;
-  --color-bad-soft: #fdeceb;
-  --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  --breakpoint-tab: 701px;   /* Tablet 701–980 */
+  --breakpoint-desk: 981px;  /* Desktop 981+ */
+
+  --color-navy-950: #101d32;
+  --color-navy-900: #172944;
+  --color-navy-800: #203a5b;
+  --color-navy-700: #2b4b70;
+  --color-blue-600: #2864d8;
+  --color-blue-700: #1e54bc;
+  --color-blue-500: #3978ea;
+  --color-blue-100: #eaf1ff;
+  --color-blue-50: #f5f8ff;
+  --color-teal-600: #087f8c;
+  --color-teal-100: #e3f5f4;
+  --color-ink-900: #172235;
+  --color-ink-700: #40516a;
+  --color-ink-500: #69788d;
+  --color-ink-400: #8996a8;
+  --color-line: #e2e8f0;
+  --color-line-strong: #cbd5e1;
+  --color-canvas: #f4f6fa;
+  --color-soft: #f8fafc;
+  --color-green: #16845b;
+  --color-green-bg: #e8f6ef;
+  --color-amber: #a9680b;
+  --color-amber-bg: #fff4dd;
+  --color-red: #c33d4b;
+  --color-red-bg: #fdecef;
+  --color-purple: #7255b5;
+  --color-purple-bg: #f1edfa;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --shadow-sm: 0 2px 8px rgba(22, 39, 64, 0.06);
+  --shadow-md: 0 12px 32px rgba(22, 39, 64, 0.1);
+
+  --font-sans: Inter, "Pretendard Variable", Pretendard, "Noto Sans KR", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
 }
 
 html { -webkit-text-size-adjust: 100%; }
 body {
-  background: var(--color-paper);
-  color: var(--color-ink);
+  background: var(--color-canvas);
+  color: var(--color-ink-900);
   font-family: var(--font-sans);
-  letter-spacing: -0.01em;
+  line-height: 1.55;
   -webkit-tap-highlight-color: transparent;
 }
-input, textarea, select { font-size: 16px; } /* iOS 확대 방지 */
-.safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) + 76px); }
+input, textarea, select { font-size: 16px; } /* 모바일 확대 방지 */
+@media (min-width: 701px) { input, textarea, select { font-size: 14px; } }
+:focus-visible { outline: 2px solid var(--color-blue-500); outline-offset: 2px; border-radius: 6px; }
+.safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) + 84px); }
+@media (min-width: 701px) { .safe-bottom { padding-bottom: 64px; } }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
-@media print {
-  .no-print { display: none !important; }
-}
+@media print { .no-print { display: none !important; } }
