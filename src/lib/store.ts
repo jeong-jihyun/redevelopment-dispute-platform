@@ -18,8 +18,11 @@ export type Case = {
   members: Member[]; schedules: Schedule[]; evidence: Evidence[]; lawIds: string[]; analyses: { id: string; at: string; question: string; analysis: Analysis }[];
   activity: Log[];
 };
-export type Msg = { role: "user" | "ai"; text: string; at: string; analysis?: Analysis; followUps?: { key: keyof Facts; question: string; options: string[] }[] };
-export type Conversation = { id: string; title: string; caseId?: string; facts: Facts; messages: Msg[]; createdAt: string; updatedAt: string };
+export type Msg = { role: "user" | "ai"; text: string; at: string; analysis?: Analysis; note?: string; followUp?: { key: keyof Facts; question: string; options: string[] } };
+export type Conversation = {
+  id: string; title: string; caseId?: string; topic?: string; facts: Facts; messages: Msg[];
+  pendingQuestion?: string; skipped?: (keyof Facts)[]; createdAt: string; updatedAt: string;
+};
 export type Profile = { name: string; email: string; role: string; region: string; notify: boolean; joinedAt?: string };
 
 export type DB = { profile: Profile | null; cases: Case[]; conversations: Conversation[]; docs: GenDoc[]; access: Log[] };

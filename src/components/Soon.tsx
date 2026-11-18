@@ -15,8 +15,8 @@ export default function Soon({ title, desc }: { title: string; desc: string }) {
           <p className="mx-auto mt-1 max-w-[440px] text-[14px] leading-relaxed text-ink-500">{desc}</p>
           <div className="mx-auto mt-4 max-w-[440px] text-left">
             <Step n="1" title="기준 데이터·검색·법령 화면" badge={<Badge tone="green">완료</Badge>} />
-            <Step n="2" title="AI 법률 도우미" badge={<Badge tone="blue">다음</Badge>} />
-            <Step n="3" title="서류 자동 작성" badge={<Badge tone="gray">대기</Badge>} />
+            <Step n="2" title="AI 법률 도우미" badge={<Badge tone="green">완료</Badge>} />
+            <Step n="3" title="서류 자동 작성" badge={<Badge tone="blue">다음</Badge>} />
             <Step n="4" title="내 사건 관리" badge={<Badge tone="gray">대기</Badge>} />
           </div>
           <Link href="/" className={`${btnCls("primary")} mt-5`}>홈으로</Link>

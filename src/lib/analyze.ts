@@ -13,6 +13,8 @@ export function scoreDisputes(q: string): { d: Dispute; score: number }[] {
     let score = 0;
     for (const k of d.keywords) if (text.includes(k.replace(/\s/g, ""))) score += k.length >= 3 ? 2 : 1;
     if (text.includes(d.short.replace(/[·\s]/g, ""))) score += 2;
+    // 의도 보정: 자료를 보여 달라는 요청은 정보공개 분쟁이 핵심
+    if (d.id === "d9" && /열람|공개|복사|안\s?보여|보여\s?주지/.test(q)) score += 4;
     return { d, score };
   })
     .filter((x) => x.score > 0)
@@ -64,8 +66,15 @@ export function detectFacts(q: string): Facts {
   const role = ROLES.find((r) => q.includes(r.name));
   if (role) f.role = role.name;
   else if (has(q, ["세입", "임차"])) f.role = "세입자";
-  const st = STAGES.find((s) => q.includes(s.split(" ")[0]));
-  if (st) f.stage = st;
+  // 단계는 그 단계에만 쓰는 낱말로 판단 ('조합' 같은 흔한 말로 단정하지 않음)
+  const STAGE_KEYS: [number, string[]][] = [
+    [6, ["관리처분"]], [4, ["사업시행"]], [7, ["현금청산", "이주비", "이주", "수용재결", "손실보상", "보상금"]],
+    [5, ["시공사", "시공자", "도급계약"]], [9, ["공사비", "추가 분담금", "추가분담금"]], [8, ["철거", "착공"]],
+    [10, ["준공", "이전고시"]], [11, ["조합 해산", "해산"]], [3, ["조합설립", "조합 설립", "설립인가"]],
+    [2, ["추진위"]], [1, ["정비구역", "정비계획"]],
+  ];
+  const hit = STAGE_KEYS.find(([, ks]) => ks.some((k) => q.includes(k)));
+  if (hit) f.stage = STAGES[hit[0] - 1];
   if (has(q, ["요청했", "요구했", "신청했", "보냈", "청구했"])) f.priorRequest = "예";
   return f;
 }

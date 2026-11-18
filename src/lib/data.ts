@@ -254,7 +254,7 @@ export const DISPUTES: Dispute[] = [
     causes: ["복합 분쟁", "준공·이전고시·청산 관련"],
     stages: [10, 11, 12], laws: ["dj124", "ah27", "al20"],
     procedure: ["사실관계 정리", "AI 상담으로 쟁점 파악", "전문가 상담"],
-    evidence: ["관련 문서 일체"], docs: ["t10", "t11", "t1"], keywords: ["청산", "해산", "이전고시", "준공", "기타"],
+    evidence: ["관련 문서 일체"], docs: ["t10", "t11", "t1"], keywords: ["조합 청산", "청산인", "해산", "이전고시", "준공", "기타"],
   },
 ];
 
