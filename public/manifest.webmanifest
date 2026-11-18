@@ -1,0 +1,11 @@
+{
+  "name": "재개발 분쟁 도우미",
+  "short_name": "분쟁도우미",
+  "description": "재개발 분쟁 대응 통합 플랫폼",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f5f4ef",
+  "theme_color": "#1b2d52",
+  "lang": "ko",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

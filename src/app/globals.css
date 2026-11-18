@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #16213a;
+  --color-navy: #1b2d52;
+  --color-navy-2: #2a4277;
+  --color-paper: #f5f4ef;
+  --color-line: #e3e1d8;
+  --color-muted: #6b6f7b;
+  --color-amber: #d98e20;
+  --color-amber-soft: #fbf0dc;
+  --color-good: #1f7a55;
+  --color-good-soft: #e3f3ec;
+  --color-bad: #b42318;
+  --color-bad-soft: #fdeceb;
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+}
+
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  letter-spacing: -0.01em;
+  -webkit-tap-highlight-color: transparent;
+}
+input, textarea, select { font-size: 16px; } /* iOS 확대 방지 */
+.safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) + 76px); }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+@media print {
+  .no-print { display: none !important; }
+}
