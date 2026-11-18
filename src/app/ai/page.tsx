@@ -8,7 +8,7 @@ import { detectFacts, maskSensitive, type Facts } from "@/lib/analyze";
 import { analyzeQuestion, nextFollowUp } from "@/lib/chat";
 import { getDB, now, uid, update, useDB, type Conversation, type Msg } from "@/lib/store";
 import AnalysisCard from "@/components/AnalysisCard";
-import { Alert, Badge, Btn, CardGrid, CaseCard, Disclaimer, Empty, Field, Loading, Page, PageHeader, Panel, Section, StepList, TextBtn, TopBar, btnCls, inputCls } from "@/components/ui";
+import { Alert, Badge, Btn, CardGrid, CaseCard, Disclaimer, Empty, Loading, Page, Panel, SearchHero, Section, StepList, TextBtn, TopBar, btnCls, inputCls } from "@/components/ui";
 
 const EXAMPLES = [
   "조합에 총회 회의록 열람을 요청했는데 한 달째 답이 없어요",
@@ -169,35 +169,13 @@ function Chat({ c, aiOn }: { c: Conversation; aiOn: boolean | null }) {
   );
 }
 
-function StartForm({ onStart, topicName }: { onStart: (t: string) => void; topicName?: string }) {
-  const [text, setText] = useState("");
-  const [touched, setTouched] = useState(false);
-  const empty = !text.trim();
-  return (
-    <form onSubmit={(e) => { e.preventDefault(); setTouched(true); if (!empty) onStart(text); }}>
-      <Field label="상황 설명" required help="언제, 누가, 무엇을 했는지 시간 순서대로 적어 주세요. 개인정보는 필요한 범위에서만 입력하세요.">
-        <textarea value={text} maxLength={MAX} rows={4} onChange={(e) => setText(e.target.value)}
-          placeholder={topicName ? `예) ${topicName} 관련해서 조합에서 통보를 받았는데…` : "예) 조합에 총회 회의록 열람을 요청했는데 한 달째 답이 없어요"}
-          className={`${inputCls} min-h-[112px] resize-y leading-relaxed`} aria-invalid={touched && empty} />
-      </Field>
-      <div className="t-meta -mt-1 mb-3 flex items-center justify-between">
-        <span className="font-bold text-red">{touched && empty ? "상황 설명을 입력해 주세요." : ""}</span>
-        <span className="text-ink-400">{text.length} / {MAX}</span>
-      </div>
-      <Alert tone="info" title="개인정보 보호">주민등록번호·휴대폰 번호는 자동으로 가린 뒤 분석하며, 상담 내용은 이 기기에만 저장됩니다.</Alert>
-      <div className="mt-3 flex flex-wrap gap-[9px]">
-        <button type="submit" className={`${btnCls("primary")} flex-1 tab:flex-none`}>분석 시작</button>
-        {!empty && <button type="button" className={btnCls("secondary")} onClick={() => { setText(""); setTouched(false); }}>지우기</button>}
-      </div>
-    </form>
-  );
-}
-
 function Start({ aiOn }: { aiOn: boolean | null }) {
   const router = useRouter();
   const sp = useSearchParams();
   const db = useDB();
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
+  const [text, setText] = useState("");
+  const [touched, setTouched] = useState(false);
   const topicId = sp.get("topic") || undefined;
   const topic = topicId ? disputeById(topicId) : undefined;
   const preset = sp.get("q");
@@ -217,15 +195,20 @@ function Start({ aiOn }: { aiOn: boolean | null }) {
 
   return (
     <Page>
-      <PageHeader eyebrow="AI legal assistant" title="내 상황 분석하기"
+      <SearchHero eyebrow="AI LEGAL ASSISTANT" title="내 상황 분석하기"
         lead="상황을 적어 주시면 부족한 정보를 몇 가지 확인한 뒤 쟁점·근거 법령·대응 방법을 정리해 드립니다."
         badges={[
           aiOn === null ? { text: "연결 확인 중", tone: "gray" } : aiOn ? { text: "AI 분석 연결됨", tone: "blue" } : { text: "기본 분석 모드", tone: "gray" },
           { text: "확인된 법령·판례만 인용", tone: "green" },
           ...(topic ? [{ text: `상담 주제 · ${topic.short}`, tone: "purple" as const }] : []),
-        ]} />
-
-      <Panel className="mt-5"><StartForm onStart={start} topicName={topic?.short} /></Panel>
+        ]}
+        multiline label="상황 설명" button="분석 시작" maxLength={MAX} value={text} onChange={(v) => { setText(v); if (v.trim()) setTouched(false); }}
+        placeholder={topic ? `예) ${topic.short} 관련해서 조합에서 통보를 받았는데…` : "예) 조합에 총회 회의록 열람을 요청했는데 한 달째 답이 없어요"}
+        help="언제, 누가, 무엇을 했는지 시간 순서대로 적어 주세요."
+        error={touched && !text.trim() ? "상황 설명을 입력해 주세요." : undefined}
+        onSubmit={() => { if (!text.trim()) { setTouched(true); return; } start(text); }}
+        examples={EXAMPLES} onExample={start} />
+      <Alert tone="info" title="개인정보 보호">주민등록번호·휴대폰 번호는 자동으로 가린 뒤 분석하며, 상담 내용은 이 기기에만 저장됩니다. 개인정보는 필요한 범위에서만 입력하세요.</Alert>
 
       <Section title="진행 순서" desc="상담은 이 순서로 진행됩니다" kicker="PROCESS">
         <StepList items={[
@@ -234,10 +217,6 @@ function Start({ aiOn }: { aiOn: boolean | null }) {
           { title: "분석 결과", desc: "쟁점·근거 법령·판례·대응 방법을 정리합니다" },
           { title: "다음 행동", desc: "필요한 서류 작성과 사건 관리로 이어집니다" },
         ]} />
-      </Section>
-
-      <Section title="이렇게 물어보세요" desc="누르면 바로 상담이 시작됩니다" kicker="EXAMPLES">
-        <StepList items={EXAMPLES.map((e) => ({ title: e, onClick: () => start(e), right: <span className="t-label">시작 →</span> }))} />
       </Section>
 
       <Section title="최근 상담" desc="이 기기에 저장된 상담" kicker="HISTORY">

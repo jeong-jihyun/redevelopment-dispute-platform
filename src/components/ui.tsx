@@ -164,25 +164,38 @@ export function PageHeader({ eyebrow, title, lead, badges }: { eyebrow: string; 
 }
 
 /** 검색 영역 = 남색 상자 (사용자 확정 2026-11-19). 홈·통합 검색·법령 검색 모두 이 부품만 사용 */
-export function SearchHero({ eyebrow, title, lead, label, value, onChange, onSubmit, placeholder, help, examples, onExample, top }: {
+export function SearchHero({ eyebrow, title, lead, label, value, onChange, onSubmit, placeholder, help, examples, onExample, top, badges, multiline, button = "검색", error, maxLength }: {
   eyebrow: string; title: string; lead?: string; label: string; value: string; onChange: (v: string) => void; onSubmit: () => void;
   placeholder?: string; help?: string; examples?: string[]; onExample?: (e: string) => void; top?: ReactNode;
+  badges?: BadgeSpec[]; multiline?: boolean; button?: string; error?: string; maxLength?: number;
 }) {
   return (
     <section className="rounded-[24px] bg-navy-950 p-5 text-white shadow-[var(--shadow-md)] tab:p-8 desk:p-10">
       <div className="text-[11px] font-extrabold tracking-[1.4px] text-[#8fb4ff]">{eyebrow}</div>
       <h1 className="mt-2 text-[24px] font-extrabold leading-tight tracking-[-1px] tab:text-[30px] tab:tracking-[-1.2px]">{title}</h1>
       {lead && <p className="mt-2 max-w-[640px] text-[14px] leading-relaxed text-[#b9c7d9]">{lead}</p>}
+      {badges && badges.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{badges.map((b) => <Badge key={b.text} tone={b.tone}>{b.text}</Badge>)}</div>}
       {top && <div className="mt-5 max-w-[720px]">{top}</div>}
       <form onSubmit={(e) => { e.preventDefault(); onSubmit(); }} className={`${top ? "mt-3" : "mt-5"} max-w-[720px]`}>
         <span className="sr-only">{label}</span>
-        <div className="flex items-center gap-2 rounded-[14px] bg-white p-1.5 pl-3.5 text-ink-900">
-          <Search size={19} className="shrink-0 text-ink-400" />
-          <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={label} className="min-w-0 flex-1 bg-transparent py-2 outline-none" />
-          <button type="submit" className={btnCls("primary")}>검색</button>
-        </div>
+        {multiline ? (
+          <div className="rounded-[14px] bg-white p-1.5 text-ink-900">
+            <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={label} maxLength={maxLength} rows={4}
+              aria-invalid={!!error} className="block min-h-[112px] w-full resize-none bg-transparent px-2 py-2 leading-relaxed outline-none" />
+            <div className="flex items-center justify-between gap-2 border-t border-line px-2 pt-1.5">
+              <span className="text-[11px] text-ink-400">{maxLength ? `${value.length} / ${maxLength}` : ""}</span>
+              <button type="submit" className={btnCls("primary")}>{button}</button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 rounded-[14px] bg-white p-1.5 pl-3.5 text-ink-900">
+            <Search size={19} className="shrink-0 text-ink-400" />
+            <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-label={label} className="min-w-0 flex-1 bg-transparent py-2 outline-none" />
+            <button type="submit" className={btnCls("primary")}>{button}</button>
+          </div>
+        )}
       </form>
-      {help && <p className="mt-2 text-[12px] text-[#9fb0c7]">{help}</p>}
+      {error ? <p className="mt-2 text-[12px] font-bold text-[#ffb4bd]">{error}</p> : help && <p className="mt-2 text-[12px] text-[#9fb0c7]">{help}</p>}
       {examples && examples.length > 0 && (
         <div className="no-scrollbar -mx-5 mt-3 flex gap-2 overflow-x-auto px-5 tab:mx-0 tab:flex-wrap tab:px-0">
           {examples.map((e) => (
