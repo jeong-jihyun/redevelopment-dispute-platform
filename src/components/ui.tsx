@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import {
   AlertTriangle, BookOpen, Check, ChevronLeft, Copy, ExternalLink, FileText, FolderLock, Home, Info, MessageCircle, Scale, Search, ShieldAlert, UserRound,
@@ -264,7 +264,7 @@ export function CaseCard({ href, badges, title, desc, meta, action = "자세히 
       <div className="mt-auto pt-[14px]">
         <div className="flex items-center justify-between gap-3 border-t border-line pt-3 text-[11px] text-ink-400">
           <span className="min-w-0">{meta}</span>
-          {footer ?? (action ? <b className="shrink-0 text-ink-700">{action} →</b> : null)}
+          {footer ?? (action && href ? <b className="shrink-0 text-ink-700">{action} →</b> : null)}
         </div>
       </div>
     </>
@@ -535,6 +535,95 @@ export function BusyOverlay() {
           <span className="min-w-0 break-keep">{b.label}{b.pct != null && ` · ${Math.round(b.pct)}%`}</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+
+/* ───── 손글씨 서명 패드 ─────
+   손가락·펜·마우스로 서명. onChange로 PNG(data URL, 흰 배경, 가로 최대 600px)를 넘긴다. 비우면 null */
+export function SignaturePad({ onChange, disabled }: { onChange: (png: string | null) => void; disabled?: boolean }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  const drawing = useRef(false);
+  const last = useRef<{ x: number; y: number } | null>(null);
+  const [empty, setEmpty] = useState(true);
+  const strokes = useRef(0);
+
+  useEffect(() => {
+    const c = ref.current; if (!c) return;
+    const fit = () => {
+      const r = c.getBoundingClientRect(); const dpr = Math.min(window.devicePixelRatio || 1, 3);
+      const snap = strokes.current ? c.toDataURL() : null;
+      c.width = Math.round(r.width * dpr); c.height = Math.round(r.height * dpr);
+      const g = c.getContext("2d")!; g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.fillStyle = "#ffffff"; g.fillRect(0, 0, r.width, r.height);
+      g.lineCap = "round"; g.lineJoin = "round"; g.strokeStyle = "#101d32"; g.lineWidth = 2.6;
+      if (snap) { const im = new Image(); im.onload = () => g.drawImage(im, 0, 0, r.width, r.height); im.src = snap; }
+    };
+    fit();
+    const ro = new ResizeObserver(fit); ro.observe(c);
+    return () => ro.disconnect();
+  }, []);
+
+  const pos = (e: React.PointerEvent) => { const r = ref.current!.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
+  function down(e: React.PointerEvent) {
+    if (disabled) return;
+    e.preventDefault(); ref.current!.setPointerCapture(e.pointerId);
+    drawing.current = true; last.current = pos(e);
+    const g = ref.current!.getContext("2d")!; g.beginPath(); g.arc(last.current.x, last.current.y, 1.2, 0, Math.PI * 2); g.fillStyle = "#101d32"; g.fill();
+  }
+  function move(e: React.PointerEvent) {
+    if (!drawing.current || !last.current) return;
+    e.preventDefault();
+    const p = pos(e); const g = ref.current!.getContext("2d")!;
+    g.lineWidth = e.pressure && e.pointerType === "pen" ? 1.4 + e.pressure * 2.6 : 2.6;
+    g.beginPath(); g.moveTo(last.current.x, last.current.y); g.lineTo(p.x, p.y); g.stroke();
+    last.current = p;
+  }
+  function up() {
+    if (!drawing.current) return;
+    drawing.current = false; last.current = null; strokes.current += 1; setEmpty(false);
+    onChange(exportPng());
+  }
+  function exportPng() {
+    const c = ref.current!; const w = Math.min(600, c.width); const h = Math.round(c.height * (w / c.width));
+    const o = document.createElement("canvas"); o.width = w; o.height = h;
+    const g = o.getContext("2d")!; g.fillStyle = "#ffffff"; g.fillRect(0, 0, w, h); g.drawImage(c, 0, 0, w, h);
+    return o.toDataURL("image/png");
+  }
+  function clear() {
+    const c = ref.current!; const g = c.getContext("2d")!; const r = c.getBoundingClientRect();
+    g.fillStyle = "#ffffff"; g.fillRect(0, 0, r.width, r.height);
+    strokes.current = 0; setEmpty(true); onChange(null);
+  }
+  return (
+    <div>
+      <div className="relative">
+        <canvas ref={ref} aria-label="서명 입력 칸" role="img"
+          className={`block h-[180px] w-full touch-none rounded-[11px] border-2 border-dashed ${disabled ? "border-line bg-soft" : "border-line-strong bg-white"} tab:h-[200px]`}
+          onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerLeave={up} />
+        {empty && <span className="pointer-events-none absolute inset-0 grid place-items-center text-[13px] text-ink-400">이 칸에 손가락이나 펜으로 서명하세요</span>}
+        <span className="pointer-events-none absolute inset-x-6 bottom-9 border-b border-line" />
+      </div>
+      <div className="mt-2 flex items-center justify-between">
+        <span className="text-[11px] text-ink-400">{empty ? "서명 전" : "서명 입력됨"}</span>
+        <button type="button" onClick={clear} disabled={empty || disabled} className="text-[12px] font-bold text-ink-500 disabled:opacity-40">지우고 다시 쓰기</button>
+      </div>
+    </div>
+  );
+}
+
+
+/** 둘 중 하나 고르기 (동의/반대 등). tone: 고른 칸 색 */
+export function ChoiceGroup<T extends string>({ value, onChange, options, label }: { value: T | ""; onChange: (v: T) => void; options: { value: T; label: string; tone: "green" | "red" | "blue" }[]; label: string }) {
+  const on = { green: "border-green bg-green-bg text-green", red: "border-red bg-red-bg text-red", blue: "border-blue-600 bg-blue-50 text-blue-600" };
+  return (
+    <div role="radiogroup" aria-label={label} className="mb-3 grid grid-cols-2 gap-2.5">
+      {options.map((o) => (
+        <label key={o.value} className={`flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-[9px] border px-3 text-[14px] font-bold ${value === o.value ? on[o.tone] : "border-line-strong bg-white text-ink-700"}`}>
+          <input type="radio" className="sr-only" checked={value === o.value} onChange={() => onChange(o.value)} />{o.label}
+        </label>
+      ))}
     </div>
   );
 }

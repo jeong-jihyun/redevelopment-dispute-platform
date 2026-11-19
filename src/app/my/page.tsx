@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { ROLES } from "@/lib/data";
 import { buildIcs, clearAllFiles, exportBackup, readBackup, restoreFiles, saveFile, usedStorage } from "@/lib/cases";
 import { fmtDate, fmtSize, getDB, logAccess, now, update, useDB, type Profile } from "@/lib/store";
+import { cloudReady, signOut, useSession } from "@/lib/cloud";
+import SharedList from "@/components/shared/SharedList";
 import {
   Alert, Btn, CheckRow, DataTable, Disclaimer, Empty, Field, MetricCard, runBusy, useBusy, Page, PageHeader, Panel, Section, SelectField, TopBar, btnCls, inputCls,
 } from "@/components/ui";
@@ -22,6 +24,7 @@ export default function MyPage() {
   const [wipe, setWipe] = useState("");
   const [perm, setPerm] = useState<string>("default");
   const fileIn = useRef<HTMLInputElement>(null);
+  const session = useSession();
 
   useEffect(() => { setP({ ...EMPTY, ...(getDB().profile || {}) }); usedStorage().then(setStorage); if (typeof Notification !== "undefined") setPerm(Notification.permission); }, []);
   const set = <K extends keyof Profile>(k: K, v: Profile[K]) => { setP((x) => ({ ...x, [k]: v })); setDirty(true); };
@@ -97,6 +100,19 @@ export default function MyPage() {
             <Btn onClick={saveProfile} disabled={!dirty} className="w-full tab:w-auto">{dirty ? "회원정보 저장" : "저장됨"}</Btn>
           </Panel>
         </Section>
+
+        {cloudReady && (
+          <Section title="공유 계정" desc="사건 공유·커뮤니티·동의서에 쓰는 로그인" kicker="ACCOUNT">
+            <Panel>
+              {session ? (
+                <div className="flex flex-wrap items-center gap-[9px]"><p className="t-body flex-1">{session.user.email}로 로그인됨</p><Btn kind="ghost" onClick={() => runBusy("로그아웃 중", async () => { await signOut(); update((d) => logAccess(d, "공유 계정 로그아웃")); })}>로그아웃</Btn></div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-[9px]"><p className="t-desc flex-1">로그인하지 않아도 내 사건은 그대로 쓸 수 있습니다. 공유·초대받은 사건에만 필요합니다.</p><Link href="/auth?next=/my" className={btnCls("secondary")}>이메일로 로그인</Link></div>
+              )}
+            </Panel>
+          </Section>
+        )}
+        <SharedList />
 
         <Section title="알림 설정" kicker="NOTIFICATION">
           <Panel className="!py-1">

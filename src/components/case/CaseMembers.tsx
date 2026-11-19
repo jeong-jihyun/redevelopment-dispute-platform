@@ -42,6 +42,7 @@ export default function MembersTab({ c }: { c: Case }) {
 
   return (
     <>
+      <Alert tone="info" title="연락처 기록">이 목록은 이 기기에만 남는 기록입니다. 실제로 함께 보고 글·동의서에 참여하게 하려면 ‘공유’ 탭에서 초대 링크를 보내세요.</Alert>
       <Section title="참여자" desc="누르면 권한을 바꿀 수 있습니다" kicker="MEMBERS">
         <CardGrid>
           {c.members.map((x) => (

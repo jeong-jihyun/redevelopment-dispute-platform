@@ -10,8 +10,9 @@ import { ActivityTab, AnalysisTab, DocsTab, LawsTab, OverviewTab } from "@/compo
 import EvidenceTab from "@/components/case/CaseEvidence";
 import MembersTab from "@/components/case/CaseMembers";
 import ScheduleTab from "@/components/case/CaseSchedule";
+import CaseShare from "@/components/case/CaseShare";
 
-const TAB_IDS = ["overview", "analysis", "laws", "docs", "evidence", "members", "schedule", "activity"] as const;
+const TAB_IDS = ["overview", "analysis", "laws", "docs", "evidence", "members", "schedule", "share", "activity"] as const;
 export type TabId = (typeof TAB_IDS)[number];
 
 function Inner() {
@@ -52,6 +53,7 @@ function Inner() {
     { id: "evidence", label: "증거자료", count: liveEv.length },
     { id: "members", label: "참여자", count: c.members.length },
     { id: "schedule", label: "일정", count: c.schedules.filter((s) => !s.done).length },
+    { id: "share", label: "공유" },
     { id: "activity", label: "활동 이력" },
   ];
   const dispute = disputeById(c.disputeType);
@@ -72,10 +74,11 @@ function Inner() {
           {tab === "evidence" && <EvidenceTab c={c} />}
           {tab === "members" && <MembersTab c={c} />}
           {tab === "schedule" && <ScheduleTab c={c} />}
+          {tab === "share" && <CaseShare c={c} />}
           {tab === "activity" && <ActivityTab c={c} />}
         </div>
-        {tab === "members" || tab === "evidence" ? (
-          <Alert tone="info" title="권한 안내">지금은 이 기기 한 대에서만 쓰는 방식이라, 참여자·접근 권한은 기록으로만 관리됩니다. 실제 초대 메일과 서버 권한 검증은 로그인 기능이 생긴 뒤 동작합니다.</Alert>
+        {tab === "evidence" ? (
+          <Alert tone="info" title="권한 안내">증거 원본 파일은 이 기기에만 있고 공유되지 않습니다. 접근 권한 표시는 기록용입니다. 다른 사람과 함께 보려면 ‘공유’ 탭을 쓰세요.</Alert>
         ) : null}
         <Disclaimer />
       </Page>

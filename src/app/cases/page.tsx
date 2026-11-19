@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BUSINESS_TYPES, disputeById } from "@/lib/data";
 import { CASE_STATUSES, ddayBadge, statusBadge } from "@/lib/cases";
 import { fmtDate, useDB } from "@/lib/store";
+import SharedList from "@/components/shared/SharedList";
 import {
   ActionPanel, Alert, CardGrid, CaseCard, Disclaimer, Empty, MetricCard, Page, SearchHero, Section, SelectField, StepList, TopBar, btnCls,
 } from "@/components/ui";
@@ -85,6 +86,7 @@ export default function CasesPage() {
             </>
           )}
         </Section>
+        <SharedList />
         <Alert tone="info" title="저장 위치">사건과 증거 원본은 이 기기 브라우저 안에만 저장됩니다. 기기를 바꾸거나 브라우저 데이터를 지우기 전에 마이페이지에서 백업 파일을 내려받으세요.</Alert>
         <Disclaimer />
       </Page>
