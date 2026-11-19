@@ -66,8 +66,8 @@ function Inner() {
               <Section title="관련 서류" desc="이 상황에서 자주 쓰는 서류">
                 <CardGrid>
                   {docs.map((t) => (
-                    <CaseCard key={t.id} href={`/docs/${t.id}`} badges={[{ text: t.category, tone: "blue" }, t.expertReview ? { text: "전문가 검토", tone: "purple" } : { text: "3단계 준비 중", tone: "gray" }]}
-                      title={t.name} desc={t.desc} meta={`양식 v${t.version}`} />
+                    <CaseCard key={t.id} href={`/docs/${t.id}`} badges={[{ text: t.category, tone: "blue" }, t.expertReview ? { text: "전문가 검토", tone: "purple" } : { text: "바로 작성", tone: "green" }]}
+                      title={t.name} desc={t.desc} meta={`입력 항목 ${t.fields.length}개`} action="작성하기" />
                   ))}
                 </CardGrid>
               </Section>

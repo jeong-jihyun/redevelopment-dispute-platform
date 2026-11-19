@@ -131,7 +131,7 @@ function Chat({ c, aiOn }: { c: Conversation; aiOn: boolean | null }) {
         {topic && <Alert tone="info" title="상담 주제">{topic.name} 기준으로 분석합니다.</Alert>}
         {c.messages.map((m, i) => {
           if (m.role === "user") return <QuestionPanel key={i} m={m} />;
-          if (m.analysis) return <div key={i} ref={i === c.messages.length - 1 ? lastRef : undefined} className="scroll-mt-[76px]"><AnalysisCard a={m.analysis} note={m.note} /></div>;
+          if (m.analysis) return <div key={i} ref={i === c.messages.length - 1 ? lastRef : undefined} className="scroll-mt-[76px]"><AnalysisCard a={m.analysis} note={m.note} convId={c.id} /></div>;
           const isActive = i === c.messages.length - 1 && !!m.followUp && !busy;
           return (
             <Panel key={i}>

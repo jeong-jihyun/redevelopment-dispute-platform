@@ -13,8 +13,8 @@ export default function Soon({ title, desc }: { title: string; desc: string }) {
           <StepList items={[
             { title: "기준 데이터·검색·법령 화면", badge: { text: "완료", tone: "green" } },
             { title: "AI 법률 도우미", badge: { text: "완료", tone: "green" } },
-            { title: "서류 자동 작성", badge: { text: "다음", tone: "blue" } },
-            { title: "내 사건 관리", badge: { text: "대기", tone: "gray" } },
+            { title: "서류 자동 작성", badge: { text: "완료", tone: "green" } },
+            { title: "내 사건 관리", badge: { text: "다음", tone: "blue" } },
           ]} />
         </Section>
         <div className="mt-5"><Link href="/" className={btnCls("secondary")}>홈으로</Link></div>

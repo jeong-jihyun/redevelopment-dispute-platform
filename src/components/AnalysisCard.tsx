@@ -17,7 +17,7 @@ function Sec({ title, kicker, children }: { title: string; kicker?: string; chil
     </section>
   );
 }
-export default function AnalysisCard({ a, note }: { a: Analysis; note?: string }) {
+export default function AnalysisCard({ a, note, convId }: { a: Analysis; note?: string; convId?: string }) {
   const [copied, setCopied] = useState(false);
   const [vote, setVote] = useState<"up" | "down" | null>(null);
   const expertTone: Tone = a.expertNeeded.level === "높음" ? "red" : a.expertNeeded.level === "보통" ? "amber" : "green";
@@ -82,7 +82,7 @@ export default function AnalysisCard({ a, note }: { a: Analysis; note?: string }
       {a.steps.length > 0 && <Sec title="다음 단계 행동" kicker="NEXT ACTION">{a.steps.map((s, i) => <Step key={s} n={i + 1} title={s} />)}</Sec>}
       {a.docs.length > 0 && (
         <Sec title="추천 서류">
-          <div className="flex flex-wrap gap-[9px]">{a.docs.map((d) => <Link key={d.id} href={`/docs/${d.id}`} className={btnCls("secondary")}>{d.name}</Link>)}</div>
+          <div className="flex flex-wrap gap-[9px]">{a.docs.map((d) => <Link key={d.id} href={`/docs/${d.id}${convId ? `?from=${convId}` : ""}`} className={btnCls("secondary")}>{d.name}</Link>)}</div>
         </Sec>
       )}
       <Sec title="전문가 상담 필요성">

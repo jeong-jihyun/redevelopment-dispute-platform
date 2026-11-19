@@ -10,7 +10,7 @@ export type Evidence = {
   hash: string; createdAt: string; updatedAt: string; createdBy: string; retentionUntil?: string;
   deletedAt?: string; legalHold?: boolean; access: string; memo?: string; versions: { at: string; hash: string; note: string }[];
 };
-export type GenDoc = { id: string; templateId: string; title: string; values: Record<string, string>; body: string; caseId?: string; createdAt: string; updatedAt: string; version: number };
+export type GenDoc = { id: string; templateId: string; title: string; values: Record<string, string>; lawIds?: string[]; body: string; edited?: boolean; caseId?: string; createdAt: string; updatedAt: string; version: number };
 export type Log = { at: string; who: string; action: string };
 export type Case = {
   id: string; title: string; businessType: string; region: string; projectName: string; stage: string; role: string;

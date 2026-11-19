@@ -29,8 +29,8 @@ export default function Home() {
   const services: { href: string; badges: BadgeSpec[]; title: string; desc: string; meta: string; action: string }[] = [
     { href: "/ai", badges: [{ text: "AI 상담", tone: "blue" }, analyzed ? { text: `분석 완료 ${analyzed}건`, tone: "green" } : { text: "바로 이용 가능", tone: "blue" }],
       title: "AI 법률 도우미", desc: "상황을 적으면 쟁점·근거 법령·대응 방법을 정리합니다.", meta: `상담 기록 ${db.conversations.length}건`, action: "상담 시작" },
-    { href: "/docs", badges: [{ text: "서류 작성", tone: "blue" }, { text: "3단계 준비 중", tone: "gray" }],
-      title: "서류 자동 작성", desc: "질문에 답하면 내용증명·청구서 초안을 만듭니다.", meta: `양식 ${TEMPLATES.length}종 · DOCX·PDF`, action: "자세히 보기" },
+    { href: "/docs", badges: [{ text: "서류 작성", tone: "blue" }, db.docs.length ? { text: `내 서류 ${db.docs.length}건`, tone: "green" } : { text: "바로 이용 가능", tone: "blue" }],
+      title: "서류 자동 작성", desc: "질문에 답하면 내용증명·청구서 초안을 만듭니다.", meta: `양식 ${TEMPLATES.length}종 · DOCX·PDF`, action: "작성하기" },
     { href: "/cases", badges: [{ text: "사건 관리", tone: "blue" }, { text: "4단계 준비 중", tone: "gray" }],
       title: "내 사건 관리", desc: "증거자료·일정·참여자를 사건별로 관리합니다.", meta: `등록 사건 ${db.cases.length}건`, action: "자세히 보기" },
   ];
