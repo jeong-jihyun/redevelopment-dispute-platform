@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import {
   AlertTriangle, BookOpen, Check, ChevronLeft, Copy, ExternalLink, FileText, FolderLock, Home, Info, MessageCircle, Scale, Search, ShieldAlert, UserRound,
@@ -139,7 +139,8 @@ export const btnCls = (kind: BtnKind = "primary") =>
 export function Btn({ children, onClick, kind = "primary", type = "button", disabled, className = "" }: {
   children: ReactNode; onClick?: () => void; kind?: BtnKind; type?: "button" | "submit"; disabled?: boolean; className?: string;
 }) {
-  return <button type={type} disabled={disabled} onClick={onClick} className={`${btnCls(kind)} ${className}`}>{children}</button>;
+  const busy = useBusy();
+  return <button type={type} disabled={disabled || !!busy} onClick={onClick} className={`${btnCls(kind)} ${className}`}>{children}</button>;
 }
 
 export function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
@@ -488,5 +489,52 @@ export function CheckRow({ checked, onChange, title, desc, right }: { checked: b
       <span className="min-w-0 flex-1"><span className="t-title block">{title}</span>{desc && <span className="t-desc block">{desc}</span>}</span>
       {right && <span className="shrink-0">{right}</span>}
     </label>
+  );
+}
+
+
+/* ───── 저장 중 잠금 (중복 저장 방지) ─────
+   runBusy로 감싼 작업이 끝날 때까지: 위쪽 로딩바 + 화면 전체 클릭 차단 + 같은 작업 재실행 무시 */
+type BusyState = { label: string; pct?: number } | null;
+let busyState: BusyState = null;
+const busySubs = new Set<() => void>();
+const emitBusy = () => busySubs.forEach((f) => f());
+export function useBusy() {
+  return useSyncExternalStore((f) => { busySubs.add(f); return () => { busySubs.delete(f); }; }, () => busyState, () => null);
+}
+/** 진행 중 문구·진행률(0~100) 바꾸기 — 여러 파일 올리기 등 */
+export function setBusyLabel(label: string, pct?: number) {
+  if (busyState) { busyState = { label, pct }; emitBusy(); }
+}
+/** 작업 실행. 이미 다른 작업이 진행 중이면 아무것도 하지 않고 undefined를 돌려준다 */
+export async function runBusy<T>(label: string, fn: () => T | Promise<T>, minMs = 450): Promise<T | undefined> {
+  if (busyState) return undefined;
+  busyState = { label }; emitBusy();
+  const t0 = Date.now();
+  try {
+    return await fn(); // 바로 실행 (사파리는 탭 직후가 아니면 새 창·내려받기를 막음)
+  } finally {
+    const wait = minMs - (Date.now() - t0);
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    busyState = null; emitBusy();
+  }
+}
+export function BusyOverlay() {
+  const b = useBusy();
+  if (!b) return null;
+  return (
+    <div role="alert" aria-busy="true" aria-live="assertive" className="no-print fixed inset-0 z-[100] cursor-wait bg-white/50"
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+      <div className="absolute inset-x-0 top-0 h-1 overflow-hidden bg-blue-100">
+        {b.pct != null ? <div className="h-full bg-blue-600 transition-[width] duration-300" style={{ width: `${Math.max(4, Math.min(100, b.pct))}%` }} />
+          : <div className="busy-bar h-full w-1/3 bg-blue-600" />}
+      </div>
+      <div className="absolute inset-0 grid place-items-center px-6">
+        <div className="flex max-w-[320px] items-center gap-2.5 rounded-[11px] bg-navy-950 px-4 py-3 text-[13px] font-bold text-white shadow-[var(--shadow-md)]">
+          <Loader2 size={16} className="shrink-0 animate-spin" />
+          <span className="min-w-0 break-keep">{b.label}{b.pct != null && ` · ${Math.round(b.pct)}%`}</span>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
 import { MEMBER_ROLES } from "@/lib/cases";
-import { fmtDate, logCase, now, uid, update, type Case } from "@/lib/store";
-import { Alert, Btn, CardGrid, CaseCard, CheckRow, Field, Panel, Section, SelectField, TextBtn, inputCls, type Tone } from "@/components/ui";
+import { fmtDate, getDB, logCase, now, uid, update, type Case } from "@/lib/store";
+import { Alert, Btn, runBusy, CardGrid, CaseCard, CheckRow, Field, Panel, Section, SelectField, TextBtn, inputCls, type Tone } from "@/components/ui";
 
 const roleTone = (r: string): Tone => (r === "사건 소유자" ? "blue" : r === "외부 전문가" ? "purple" : r === "관리자" ? "blue" : "gray");
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -23,6 +23,8 @@ export default function MembersTab({ c }: { c: Case }) {
   function invite() {
     setTried(true);
     if (!name.trim() || !EMAIL.test(email.trim()) || dupe) return;
+    runBusy("초대 등록 중", () => {
+    if (getDB().cases.find((x) => x.id === c.id)?.members.some((m) => m.email.toLowerCase() === email.trim().toLowerCase())) return;
     update((d) => {
       const cs = d.cases.find((x) => x.id === c.id)!;
       cs.members.push({ id: uid(), name: name.trim(), email: email.trim(), role, invitedAt: now(), accepted: false });
@@ -30,6 +32,7 @@ export default function MembersTab({ c }: { c: Case }) {
     });
     setMsg(`${name.trim()}님을 ‘수락 대기’로 등록했습니다.`);
     setName(""); setEmail(""); setRole("일반 참여자"); setTried(false);
+    });
   }
   const m = c.members.find((x) => x.id === sel);
   const ownerCount = c.members.filter((x) => x.role === "사건 소유자").length;
@@ -57,7 +60,7 @@ export default function MembersTab({ c }: { c: Case }) {
             <CheckRow checked={m.accepted} onChange={(v) => patch((x) => { x.accepted = v; }, `참여 상태 · ${m.name} → ${v ? "참여 중" : "수락 대기"}`)} title="초대를 수락함" desc="상대가 수락했다고 알려 오면 체크하세요." />
             <div className="mt-3 flex flex-wrap gap-[9px]">
               {m.role === "사건 소유자" && ownerCount <= 1 ? <p className="t-meta">마지막 사건 소유자는 뺄 수 없습니다.</p>
-                : confirm ? <><Btn kind="danger" onClick={() => { update((d) => { const cs = d.cases.find((x) => x.id === c.id)!; cs.members = cs.members.filter((x) => x.id !== m.id); logCase(cs, `참여자 제외 · ${m.name}`); }); setSel(null); setConfirm(false); }}>정말 빼기</Btn><Btn kind="secondary" onClick={() => setConfirm(false)}>취소</Btn></>
+                : confirm ? <><Btn kind="danger" onClick={() => runBusy("참여자 빼는 중", () => { update((d) => { const cs = d.cases.find((x) => x.id === c.id)!; cs.members = cs.members.filter((x) => x.id !== m.id); logCase(cs, `참여자 제외 · ${m.name}`); }); setSel(null); setConfirm(false); })}>정말 빼기</Btn><Btn kind="secondary" onClick={() => setConfirm(false)}>취소</Btn></>
                 : <Btn kind="danger" onClick={() => setConfirm(true)}>사건에서 빼기</Btn>}
             </div>
           </Panel>

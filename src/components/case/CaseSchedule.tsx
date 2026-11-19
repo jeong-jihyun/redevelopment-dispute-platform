@@ -3,7 +3,7 @@ import { useState } from "react";
 import { ymd } from "@/lib/analyze";
 import { buildIcs, ddayBadge, deadlineLaws, lawDeadline, saveFile } from "@/lib/cases";
 import { logCase, uid, update, type Case, type Schedule } from "@/lib/store";
-import { Alert, Btn, CardGrid, CaseCard, Empty, Field, Panel, Section, SelectField, TextBtn, inputCls } from "@/components/ui";
+import { Alert, Btn, runBusy, CardGrid, CaseCard, Empty, Field, Panel, Section, SelectField, TextBtn, inputCls } from "@/components/ui";
 
 export default function ScheduleTab({ c }: { c: Case }) {
   const [mode, setMode] = useState<"law" | "free">("law");
@@ -31,9 +31,11 @@ export default function ScheduleTab({ c }: { c: Case }) {
       if (!title.trim() || !date) return;
       s = { id: uid(), title: title.trim(), date, kind, memo: memo.trim() || undefined };
     }
-    update((d) => { const cs = d.cases.find((x) => x.id === c.id)!; cs.schedules.push(s); logCase(cs, `${s.kind} 등록 · ${s.title} (${s.date})`); });
-    setMsg(`‘${s.title}’ ${s.date}를 등록했습니다. 휴대폰 알림을 받으려면 아래 ‘휴대폰 캘린더에 넣기’를 누르세요.`);
-    setTitle(""); setDate(""); setMemo(""); setTried(false);
+    runBusy("일정 추가 중", () => {
+      update((d) => { const cs = d.cases.find((x) => x.id === c.id)!; cs.schedules.push(s); logCase(cs, `${s.kind} 등록 · ${s.title} (${s.date})`); });
+      setMsg(`‘${s.title}’ ${s.date}를 등록했습니다. 휴대폰 알림을 받으려면 아래 ‘휴대폰 캘린더에 넣기’를 누르세요.`);
+      setTitle(""); setDate(""); setMemo(""); setTried(false);
+    });
   }
   const patch = (sid: string, fn: (s: Schedule) => void, action: string) => update((d) => {
     const cs = d.cases.find((x) => x.id === c.id)!; const s = cs.schedules.find((x) => x.id === sid); if (!s) return; fn(s); logCase(cs, action);
@@ -54,8 +56,8 @@ export default function ScheduleTab({ c }: { c: Case }) {
                 desc={[s.basis, s.memo].filter(Boolean).join(" · ") || undefined} meta={s.date}
                 footer={
                   <span className="flex shrink-0 items-center gap-3">
-                    <TextBtn tone="muted" onClick={() => patch(s.id, (x) => { x.done = !x.done; }, `${s.done ? "일정 되돌림" : "일정 완료"} · ${s.title}`)}>{s.done ? "되돌리기" : "완료"}</TextBtn>
-                    <TextBtn tone="danger" onClick={() => update((d) => { const cs = d.cases.find((x) => x.id === c.id)!; cs.schedules = cs.schedules.filter((x) => x.id !== s.id); logCase(cs, `일정 삭제 · ${s.title}`); })}>삭제</TextBtn>
+                    <TextBtn tone="muted" onClick={() => runBusy(s.done ? "되돌리는 중" : "완료 처리 중", () => patch(s.id, (x) => { x.done = !x.done; }, `${s.done ? "일정 되돌림" : "일정 완료"} · ${s.title}`), 300)}>{s.done ? "되돌리기" : "완료"}</TextBtn>
+                    <TextBtn tone="danger" onClick={() => runBusy("일정 삭제 중", () => update((d) => { const cs = d.cases.find((x) => x.id === c.id)!; if (!cs.schedules.some((x) => x.id === s.id)) return; cs.schedules = cs.schedules.filter((x) => x.id !== s.id); logCase(cs, `일정 삭제 · ${s.title}`); }), 300)}>삭제</TextBtn>
                   </span>
                 } />
             ))}
@@ -65,7 +67,7 @@ export default function ScheduleTab({ c }: { c: Case }) {
           <Panel className="mt-3.5">
             <p className="t-title">휴대폰 캘린더에 넣기</p>
             <p className="t-desc">남은 일정 {open.length}건을 캘린더 파일(.ics)로 내려받습니다. 파일을 열면 휴대폰 캘린더에 추가되고, 기한 7일 전·하루 전에 알림이 옵니다.</p>
-            <div className="mt-3"><Btn kind="secondary" onClick={() => { saveFile(buildIcs(open.map((s) => ({ s, caseTitle: c.title }))), `일정_${c.title.replace(/[\\/:*?"<>|]/g, "")}.ics`); update((d) => { const cs = d.cases.find((x) => x.id === c.id)!; logCase(cs, `캘린더 파일 내려받기 (${open.length}건)`); }); }}>캘린더 파일 내려받기</Btn></div>
+            <div className="mt-3"><Btn kind="secondary" onClick={() => runBusy("캘린더 파일 만드는 중", () => { saveFile(buildIcs(open.map((s) => ({ s, caseTitle: c.title }))), `일정_${c.title.replace(/[\\/:*?"<>|]/g, "")}.ics`); update((d) => { const cs = d.cases.find((x) => x.id === c.id)!; logCase(cs, `캘린더 파일 내려받기 (${open.length}건)`); }); })}>캘린더 파일 내려받기</Btn></div>
           </Panel>
         )}
       </Section>

@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { BottomNav, Sidebar } from "@/components/ui";
+import { BottomNav, BusyOverlay, Sidebar } from "@/components/ui";
 import Notifier from "@/components/Notifier";
 
 export const metadata: Metadata = {
@@ -26,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </div>
         <BottomNav />
         <Notifier />
+        <BusyOverlay />
       </body>
     </html>
   );

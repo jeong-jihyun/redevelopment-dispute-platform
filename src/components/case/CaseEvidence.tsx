@@ -3,27 +3,30 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { downloadDocx } from "@/lib/docgen";
 import { ACCEPT, EVIDENCE_CATEGORIES, MAX_FILE, fileKind, guessCategory, nextEvidenceNo, reviewBadge } from "@/lib/cases";
-import { fmtDate, fmtSize, logCase, now, putFile, sha256, uid, update, type Case } from "@/lib/store";
-import { ActionPanel, Alert, Badge, Btn, CaseCard, DataTable, Empty, Loading, Panel, Section, SelectField, btnCls } from "@/components/ui";
+import { fmtDate, fmtSize, getDB, logCase, now, putFile, sha256, uid, update, type Case } from "@/lib/store";
+import { ActionPanel, Alert, Badge, Btn, CaseCard, DataTable, Empty, Panel, Section, SelectField, btnCls, runBusy, setBusyLabel, useBusy } from "@/components/ui";
 
 export default function EvidenceTab({ c }: { c: Case }) {
   const input = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState<string | null>(null);
+  const busy = useBusy();
   const [msg, setMsg] = useState<{ tone: "info" | "warn" | "danger"; text: string } | null>(null);
   const [cat, setCat] = useState("");
   const [trash, setTrash] = useState(false);
 
-  async function upload(files: FileList | null) {
+  function upload(files: FileList | null) {
     if (!files?.length) return;
     const list = Array.from(files);
+    runBusy("파일 올리는 중", () => doUpload(list), 600);
+  }
+  async function doUpload(list: File[]) {
     const tooBig = list.filter((f) => f.size > MAX_FILE);
     const ok = list.filter((f) => f.size <= MAX_FILE);
     let done = 0; const failed: string[] = [];
     for (const f of ok) {
-      setBusy(`${done + 1}/${ok.length} 올리는 중 · ${f.name}`);
+      setBusyLabel(`${done + 1}/${ok.length} 올리는 중 · ${f.name}`, (done / ok.length) * 100);
       try {
         const hash = await sha256(f);
-        const dup = c.evidence.find((e) => e.hash === hash && !e.deletedAt);
+        const dup = getDB().cases.find((x) => x.id === c.id)?.evidence.find((e) => e.hash === hash && !e.deletedAt);
         const evId = uid();
         await putFile(c.id, evId, f);
         update((d) => {
@@ -37,7 +40,7 @@ export default function EvidenceTab({ c }: { c: Case }) {
         done++;
       } catch { failed.push(f.name); }
     }
-    setBusy(null);
+    setBusyLabel("올리기 완료", 100);
     if (input.current) input.current.value = "";
     const parts = [`${done}건을 올렸습니다.`];
     if (tooBig.length) parts.push(`50MB가 넘는 ${tooBig.length}건(${tooBig.map((f) => f.name).join(", ")})은 올리지 않았습니다.`);
@@ -45,7 +48,8 @@ export default function EvidenceTab({ c }: { c: Case }) {
     setMsg({ tone: tooBig.length || failed.length ? "warn" : "info", text: parts.join(" ") });
   }
 
-  async function exportList() {
+  function exportList() { runBusy("증거 목록 Word 만드는 중", doExport); }
+  async function doExport() {
     const live = c.evidence.filter((e) => !e.deletedAt);
     const body = [
       "증거자료 목록", "", `사건: ${c.title}`, `사업: ${c.projectName}`, `작성일: ${new Date().toLocaleDateString("ko-KR")}`, "",
@@ -72,7 +76,6 @@ export default function EvidenceTab({ c }: { c: Case }) {
             </>
           } />
       </div>
-      {busy && <Loading>{busy}</Loading>}
       {msg && <Alert tone={msg.tone} title="올리기 결과">{msg.text}</Alert>}
       {expired.length > 0 && <Alert tone="warn" title="보관 종료일 지남">{expired.map((e) => e.number).join(", ")}의 보관 종료 예정일이 지났습니다. 계속 보관할지 정해 주세요.</Alert>}
 

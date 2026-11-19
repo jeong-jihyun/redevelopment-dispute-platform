@@ -7,7 +7,7 @@ import { DISPUTES, lawById, templateById } from "@/lib/data";
 import { buildBody, downloadDocx, missingFields, printPdf } from "@/lib/docgen";
 import { fmtDate, getDB, logCase, now, uid, update } from "@/lib/store";
 import {
-  Alert, Btn, Disclaimer, Empty, Field, Page, PageHeader, Panel, Section, StepList, TextBtn, TopBar, btnCls, inputCls, type BadgeSpec,
+  Alert, Btn, runBusy, Disclaimer, Empty, Field, Page, PageHeader, Panel, Section, StepList, TextBtn, TopBar, btnCls, inputCls, type BadgeSpec,
 } from "@/components/ui";
 
 const draftKey = (tid: string) => `redev-doc-draft:${tid}`;
@@ -38,6 +38,7 @@ function Inner() {
   const [notice, setNotice] = useState<{ tone: "info" | "warn" | "danger"; title: string; text: string } | null>(null);
   const [confirmRegen, setConfirmRegen] = useState(false);
   const [currentDoc, setCurrentDoc] = useState<string | null>(docId);
+  const docRef = useRef<string | null>(docId);
   const loaded = useRef(false);
 
   // 불러오기: 저장된 서류 → 임시 저장본 → AI 상담 내용 순서
@@ -117,10 +118,11 @@ function Inner() {
   }
 
   function saveMine() {
+    runBusy(currentDoc ? "내 서류 업데이트 중" : "내 서류에 저장 중", async () => {
     const at = now();
-    let ver = 1; let newId = currentDoc;
+    let ver = 1; let newId = docRef.current;
     update((db) => {
-      const ex = currentDoc ? db.docs.find((d) => d.id === currentDoc) : undefined;
+      const ex = newId ? db.docs.find((d) => d.id === newId) : undefined;
       if (ex) {
         ex.values = values; ex.lawIds = lawIds; ex.body = body; ex.edited = edited; ex.updatedAt = at; ex.version += 1; ver = ex.version;
         ex.title = `${t!.title} — ${values.recipient || values.projectName || "제목 없음"}`;
@@ -133,9 +135,11 @@ function Inner() {
       if (cs && d) logCase(cs, `서류 저장 · ${d.title} (v${ver}, ${fmtDate(at)})`);
     });
     try { localStorage.removeItem(draftKey(t!.id)); } catch { /* 무시 */ }
+    docRef.current = newId;
     setCurrentDoc(newId);
     if (newId && !docId) router.replace(`/docs/${t!.id}?doc=${newId}${caseParam ? `&case=${caseParam}` : ""}`);
     setNotice({ tone: "info", title: "저장 완료", text: `내 서류에 버전 ${ver}로 저장했습니다. 서류 목록의 '내가 만든 서류'에서 다시 열 수 있습니다.` });
+    });
   }
 
   function resetDraft() {
@@ -220,8 +224,8 @@ function Inner() {
             <Section title="저장하기" kicker="SAVE">
               <Panel>
                 <div className="flex flex-wrap gap-[9px]">
-                  <Btn onClick={async () => { try { await downloadDocx(fileTitle, body, t.expertReview); setNotice({ tone: "info", title: "DOCX 저장", text: `'${fileTitle}.docx' 파일을 내려받았습니다.` }); } catch { setNotice({ tone: "danger", title: "저장 실패", text: "Word 파일을 만들지 못했습니다. 다시 시도해 주세요." }); } }} className="flex-1 tab:flex-none">Word(DOCX)로 저장</Btn>
-                  <Btn kind="secondary" onClick={() => printPdf(fileTitle, body, t.expertReview)}>PDF로 저장</Btn>
+                  <Btn onClick={() => runBusy("Word 파일 만드는 중", async () => { try { await downloadDocx(fileTitle, body, t.expertReview); setNotice({ tone: "info", title: "DOCX 저장", text: `'${fileTitle}.docx' 파일을 내려받았습니다.` }); } catch { setNotice({ tone: "danger", title: "저장 실패", text: "Word 파일을 만들지 못했습니다. 다시 시도해 주세요." }); } })} className="flex-1 tab:flex-none">Word(DOCX)로 저장</Btn>
+                  <Btn kind="secondary" onClick={() => runBusy("PDF 인쇄 화면 여는 중", () => printPdf(fileTitle, body, t.expertReview), 700)}>PDF로 저장</Btn>
                   <Btn kind="secondary" onClick={saveMine}>{currentDoc ? "내 서류 업데이트" : "내 서류에 저장"}</Btn>
                 </div>
                 <p className="t-meta mt-2.5">PDF는 인쇄 창이 열리면 대상을 ‘PDF로 저장’으로 고르세요. 팝업이 막히면 브라우저에서 팝업을 허용해 주세요.</p>

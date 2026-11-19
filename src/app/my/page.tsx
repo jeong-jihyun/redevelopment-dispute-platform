@@ -5,7 +5,7 @@ import { ROLES } from "@/lib/data";
 import { buildIcs, clearAllFiles, exportBackup, readBackup, restoreFiles, saveFile, usedStorage } from "@/lib/cases";
 import { fmtDate, fmtSize, getDB, logAccess, now, update, useDB, type Profile } from "@/lib/store";
 import {
-  Alert, Btn, CheckRow, DataTable, Disclaimer, Empty, Field, Loading, MetricCard, Page, PageHeader, Panel, Section, SelectField, TopBar, btnCls, inputCls,
+  Alert, Btn, CheckRow, DataTable, Disclaimer, Empty, Field, MetricCard, runBusy, useBusy, Page, PageHeader, Panel, Section, SelectField, TopBar, btnCls, inputCls,
 } from "@/components/ui";
 
 const EMPTY: Profile = { name: "", email: "", role: "", region: "", notify: false };
@@ -16,7 +16,7 @@ export default function MyPage() {
   const [p, setP] = useState<Profile>(EMPTY);
   const [dirty, setDirty] = useState(false);
   const [msg, setMsg] = useState<{ tone: "info" | "warn" | "danger"; title: string; text: string } | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
+  const busy = useBusy();
   const [storage, setStorage] = useState<{ used: number; quota: number } | null>(null);
   const [withFiles, setWithFiles] = useState(true);
   const [wipe, setWipe] = useState("");
@@ -30,42 +30,48 @@ export default function MyPage() {
 
   function saveProfile() {
     if (p.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email)) { setMsg({ tone: "danger", title: "이메일", text: "이메일 형식을 확인해 주세요." }); return; }
+    runBusy("회원정보 저장 중", () => {
     update((d) => { d.profile = { ...p, name: p.name.trim(), joinedAt: d.profile?.joinedAt || now() }; logAccess(d, "회원정보 수정"); });
     setDirty(false); setMsg({ tone: "info", title: "저장", text: "회원정보를 저장했습니다. 서류 작성자·사건 소유자 이름에 쓰입니다." });
+    });
   }
   async function toggleNotify(v: boolean) {
     if (v && typeof Notification !== "undefined" && Notification.permission === "default") setPerm(await Notification.requestPermission());
     update((d) => { d.profile = { ...EMPTY, ...(d.profile || {}), notify: v }; logAccess(d, `기한 알림 ${v ? "켬" : "끔"}`); });
     setP((x) => ({ ...x, notify: v }));
   }
-  async function backup() {
-    setBusy("백업 파일 만드는 중");
+  const backup = () => runBusy("백업 파일 만드는 중 (증거 원본이 많으면 오래 걸립니다)", doBackup, 600);
+  async function doBackup() {
     try {
       const r = await exportBackup(withFiles);
       saveFile(r.blob, `재개발분쟁도우미_백업_${new Date().toISOString().slice(0, 10)}.json`);
       update((d) => logAccess(d, `백업 내려받기 (증거 원본 ${r.fileCount}건)`));
       setMsg({ tone: r.missing ? "warn" : "info", title: "백업 완료", text: `백업 파일을 내려받았습니다 (${fmtSize(r.blob.size)}, 증거 원본 ${r.fileCount}건).${r.missing ? ` 원본이 없는 자료 ${r.missing}건은 목록만 들어갔습니다.` : ""} 파일에 개인정보가 들어 있으니 안전한 곳에 보관하세요.` });
     } catch { setMsg({ tone: "danger", title: "백업 실패", text: "파일을 만들지 못했습니다. ‘증거 원본 포함’을 끄고 다시 시도해 보세요." }); }
-    setBusy(null);
   }
-  async function restore(f: File | undefined) {
+  function restore(f: File | undefined) {
     if (!f) return;
-    setBusy("백업 불러오는 중");
+    runBusy("백업 불러오는 중", () => doRestore(f), 900);
+  }
+  async function doRestore(f: File) {
     try {
       const j = await readBackup(f);
       await restoreFiles(j);
       localStorage.setItem(KEY, JSON.stringify(j.db));
       setMsg({ tone: "info", title: "불러오기 완료", text: `${fmtDate(j.exportedAt)} 백업을 불러왔습니다 (사건 ${j.db.cases.length}건). 화면을 새로 고칩니다.` });
-      setTimeout(() => location.reload(), 900);
+      await new Promise((r) => setTimeout(r, 900));
+      location.reload();
+      await new Promise((r) => setTimeout(r, 3000));
     } catch (e) { setMsg({ tone: "danger", title: "불러오기 실패", text: e instanceof Error ? e.message : "백업 파일을 읽지 못했습니다." }); }
-    setBusy(null);
     if (fileIn.current) fileIn.current.value = "";
   }
-  async function wipeAll() {
+  const wipeAll = () => runBusy("모든 자료 삭제 중", doWipe, 800);
+  async function doWipe() {
     await clearAllFiles();
     localStorage.removeItem(KEY);
     Object.keys(localStorage).filter((k) => k.startsWith("redev-")).forEach((k) => localStorage.removeItem(k));
     location.href = "/";
+    await new Promise((r) => setTimeout(r, 3000));
   }
 
   return (
@@ -74,7 +80,6 @@ export default function MyPage() {
       <Page>
         <PageHeader eyebrow="MY PAGE" title="마이페이지" lead="회원정보·이용 이력·알림·자료 백업을 관리합니다." badges={[{ text: "이 기기에 저장", tone: "gray" }, ...(db.profile?.joinedAt ? [{ text: `시작 ${fmtDate(db.profile.joinedAt)}`, tone: "blue" as const }] : [])]} />
         {msg && <Alert tone={msg.tone} title={msg.title}>{msg.text}</Alert>}
-        {busy && <Loading>{busy}</Loading>}
 
         <div className="mt-5 grid grid-cols-2 gap-2.5 tab:grid-cols-4 tab:gap-3.5">
           <MetricCard n={String(db.cases.length)} title="사건" label="내 사건" />
@@ -100,7 +105,7 @@ export default function MyPage() {
           </Panel>
           {perm === "denied" && db.profile?.notify && <Alert tone="warn" title="알림 차단됨">브라우저 설정에서 이 사이트 알림을 허용해야 합니다. 앱 안의 ‘다가오는 기한’ 표시는 그대로 보입니다.</Alert>}
           <Alert tone="info" title="확실한 알림">앱을 닫아 두어도 알림을 받으려면 일정을 휴대폰 캘린더에 넣으세요. 기한 7일 전·하루 전에 캘린더가 알려 줍니다.</Alert>
-          <Btn kind="secondary" disabled={!open.length} onClick={() => { saveFile(buildIcs(open), `내사건_일정_${new Date().toISOString().slice(0, 10)}.ics`); update((d) => logAccess(d, `캘린더 파일 내려받기 (${open.length}건)`)); }}>
+          <Btn kind="secondary" disabled={!open.length} onClick={() => runBusy("캘린더 파일 만드는 중", () => { saveFile(buildIcs(open), `내사건_일정_${new Date().toISOString().slice(0, 10)}.ics`); update((d) => logAccess(d, `캘린더 파일 내려받기 (${open.length}건)`)); })}>
             모든 남은 일정 캘린더로 받기 ({open.length}건)
           </Btn>
         </Section>

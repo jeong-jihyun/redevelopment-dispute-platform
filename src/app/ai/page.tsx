@@ -8,7 +8,7 @@ import { detectFacts, maskSensitive, type Facts } from "@/lib/analyze";
 import { analyzeQuestion, nextFollowUp } from "@/lib/chat";
 import { getDB, logCase, now, uid, update, useDB, useMounted, type Conversation, type Msg } from "@/lib/store";
 import AnalysisCard from "@/components/AnalysisCard";
-import { Alert, Badge, Btn, CardGrid, CaseCard, Disclaimer, Empty, Loading, Page, Panel, SearchHero, Section, StepList, TextBtn, TopBar, btnCls, inputCls } from "@/components/ui";
+import { Alert, Badge, Btn, runBusy, CardGrid, CaseCard, Disclaimer, Empty, Loading, Page, Panel, SearchHero, Section, StepList, TextBtn, TopBar, btnCls, inputCls } from "@/components/ui";
 
 const EXAMPLES = [
   "조합에 총회 회의록 열람을 요청했는데 한 달째 답이 없어요",
@@ -186,6 +186,7 @@ function Start({ aiOn }: { aiOn: boolean | null }) {
   function start(text: string) {
     const t = maskSensitive(text.trim());
     if (!t) return;
+    runBusy("상담 시작 중", async () => {
     const id = uid();
     update((d) => {
       const cs = linkCase ? d.cases.find((x) => x.id === linkCase.id) : undefined;
@@ -194,6 +195,8 @@ function Start({ aiOn }: { aiOn: boolean | null }) {
       d.conversations.unshift({ id, title: t.slice(0, 40), topic: topicId || cs?.disputeType || undefined, caseId: cs?.id, facts, messages: [{ role: "user", text: t, at: now() }], pendingQuestion: t, skipped: [], createdAt: now(), updatedAt: now() });
     });
     router.replace(`/ai?c=${id}`);
+    await new Promise((r) => setTimeout(r, 500));
+    }, 600);
   }
   // 검색 화면에서 넘어온 질문은 바로 시작
   useEffect(() => { if (preset && !started.current) { started.current = true; start(preset); } }, [preset]); // eslint-disable-line react-hooks/exhaustive-deps

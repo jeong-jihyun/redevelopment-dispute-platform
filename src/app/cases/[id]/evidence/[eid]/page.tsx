@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { EVIDENCE_ACCESS, EVIDENCE_CATEGORIES, EVIDENCE_REVIEW, MAX_FILE, fileKind, reviewBadge, saveFile } from "@/lib/cases";
 import { delFile, fmtDate, fmtSize, getFile, logCase, now, putFile, sha256, update, useDB, useMounted, type Evidence } from "@/lib/store";
 import {
-  Alert, Btn, CheckRow, DataTable, Disclaimer, Empty, Field, Loading, Page, PageHeader, Panel, Section, SelectField, SubPanel, TopBar, btnCls, inputCls,
+  Alert, Btn, CheckRow, DataTable, Disclaimer, Empty, Field, Loading, Page, PageHeader, Panel, Section, SelectField, SubPanel, TopBar, btnCls, inputCls, runBusy,
 } from "@/components/ui";
 
 export default function EvidenceDetail() {
@@ -20,7 +20,6 @@ export default function EvidenceDetail() {
   const [text, setText] = useState<string | null>(null);
   const [fileMissing, setFileMissing] = useState(false);
   const [msg, setMsg] = useState<{ tone: "info" | "warn" | "danger"; title: string; text: string } | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<"delete" | "purge" | null>(null);
   const [form, setForm] = useState<Partial<Evidence>>({});
   const [dirty, setDirty] = useState(false);
@@ -54,15 +53,15 @@ export default function EvidenceDetail() {
     fn(ev); ev.updatedAt = now(); logCase(cs, action);
   });
 
-  async function download() {
+  const download = () => runBusy("내려받는 중", doDownload);
+  async function doDownload() {
     const b = await getFile(id, eid);
     if (!b) { setMsg({ tone: "danger", title: "원본 없음", text: "이 기기에 원본 파일이 없습니다. 백업 파일을 불러오면 복구됩니다." }); return; }
     saveFile(b, e!.name); log(`증거 내려받기 · ${e!.number}`);
   }
-  async function verify() {
-    setBusy("원본 확인값 계산 중");
+  const verify = () => runBusy("원본 확인값 계산 중", doVerify);
+  async function doVerify() {
     const b = await getFile(id, eid);
-    setBusy(null);
     if (!b) { setMsg({ tone: "danger", title: "원본 없음", text: "이 기기에 원본 파일이 없습니다." }); return; }
     const h = await sha256(b);
     const ok = h === e!.hash;
@@ -70,24 +69,28 @@ export default function EvidenceDetail() {
       : { tone: "danger", title: "확인값 다름", text: "등록 당시와 파일 내용이 다릅니다. 변경 이력을 확인하세요." });
     log(`원본 확인 · ${e!.number} · ${ok ? "같음" : "다름"}`);
   }
-  async function replace(f: File | undefined) {
+  function replace(f: File | undefined) {
     if (!f) return;
-    if (f.size > MAX_FILE) { setMsg({ tone: "warn", title: "파일이 큼", text: "50MB 이하 파일만 올릴 수 있습니다." }); return; }
-    setBusy("새 버전 올리는 중");
+    if (f.size > MAX_FILE) { setMsg({ tone: "warn", title: "파일이 큼", text: "50MB 이하 파일만 올릴 수 있습니다." }); if (replaceInput.current) replaceInput.current.value = ""; return; }
+    runBusy("새 버전 올리는 중", () => doReplace(f));
+  }
+  async function doReplace(f: File) {
     try {
       const h = await sha256(f);
       await putFile(id, eid, f);
       patch((x) => { x.name = f.name; x.type = f.type || x.type; x.size = f.size; x.hash = h; x.versions.push({ at: now(), hash: h, note: `새 버전으로 교체 · ${f.name}` }); }, `증거 새 버전 · ${e!.number} ${f.name}`);
       setMsg({ tone: "info", title: "교체 완료", text: `버전 ${e!.versions.length + 1}로 바꿨습니다. 이전 확인값은 변경 이력에 남아 있습니다.` });
     } catch { setMsg({ tone: "danger", title: "저장 실패", text: "기기 저장 공간이 부족할 수 있습니다." }); }
-    setBusy(null);
     if (replaceInput.current) replaceInput.current.value = "";
   }
   function saveForm() {
-    patch((x) => Object.assign(x, form), `증거 정보 수정 · ${e!.number}`);
-    setDirty(false); setMsg({ tone: "info", title: "저장", text: "자료 정보를 저장했습니다." });
+    runBusy("자료 정보 저장 중", () => {
+      patch((x) => Object.assign(x, form), `증거 정보 수정 · ${e!.number}`);
+      setDirty(false); setMsg({ tone: "info", title: "저장", text: "자료 정보를 저장했습니다." });
+    });
   }
-  async function purge() {
+  const purge = () => runBusy("완전 삭제 중", doPurge);
+  async function doPurge() {
     await delFile(id, eid);
     update((d) => { const cs = d.cases.find((x) => x.id === id)!; cs.evidence = cs.evidence.filter((x) => x.id !== eid); logCase(cs, `증거 완전 삭제 · ${e!.number} ${e!.name}`); });
     router.replace(`/cases/${id}?tab=evidence`);
@@ -101,14 +104,13 @@ export default function EvidenceDetail() {
         <PageHeader eyebrow="EVIDENCE" title={e.number} lead={e.name}
           badges={[{ text: e.category, tone: "blue" }, e.deletedAt ? { text: "삭제됨 · 복구 가능", tone: "gray" } : reviewBadge(e.review), ...(e.legalHold ? [{ text: "법적 보존", tone: "red" as const }] : [])]} />
         {msg && <Alert tone={msg.tone} title={msg.title}>{msg.text}</Alert>}
-        {busy && <Loading>{busy}</Loading>}
 
         {e.deletedAt ? (
           <Section title="삭제한 자료" kicker="TRASH">
             <Panel>
               <p className="t-desc">{fmtDate(e.deletedAt)}에 삭제했습니다. 복구하면 원래 번호 그대로 돌아옵니다. 완전히 지우면 이 기기에서 원본이 사라지고 되돌릴 수 없습니다.</p>
               <div className="mt-3 flex flex-wrap gap-[9px]">
-                <Btn onClick={() => patch((x) => { x.deletedAt = undefined; }, `증거 복구 · ${e.number}`)}>복구하기</Btn>
+                <Btn onClick={() => runBusy("복구 중", () => patch((x) => { x.deletedAt = undefined; }, `증거 복구 · ${e.number}`))}>복구하기</Btn>
                 {confirm === "purge" ? <><Btn kind="danger" onClick={purge}>정말 완전 삭제</Btn><Btn kind="secondary" onClick={() => setConfirm(null)}>취소</Btn></>
                   : <Btn kind="danger" onClick={() => setConfirm("purge")}>완전 삭제</Btn>}
               </div>
@@ -185,7 +187,7 @@ export default function EvidenceDetail() {
               <div className="mt-3 flex flex-wrap gap-[9px]">
                 <Btn kind="secondary" onClick={() => replaceInput.current?.click()}>새 버전으로 교체</Btn>
                 {confirm === "delete" ? (
-                  <><Btn kind="danger" onClick={() => { patch((x) => { x.deletedAt = now(); }, `증거 삭제(복구 가능) · ${e.number}`); setConfirm(null); }}>삭제 확인</Btn><Btn kind="secondary" onClick={() => setConfirm(null)}>취소</Btn></>
+                  <><Btn kind="danger" onClick={() => runBusy("삭제 중", () => { patch((x) => { x.deletedAt = now(); }, `증거 삭제(복구 가능) · ${e.number}`); setConfirm(null); })}>삭제 확인</Btn><Btn kind="secondary" onClick={() => setConfirm(null)}>취소</Btn></>
                 ) : <Btn kind="danger" onClick={() => setConfirm("delete")}>삭제</Btn>}
               </div>
             </Panel>

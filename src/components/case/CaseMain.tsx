@@ -6,7 +6,7 @@ import { LAWS, PRECEDENTS, TEMPLATES, disputeById, lawById, templateById } from 
 import { CASE_STATUSES, caseProgress, clearCaseFiles } from "@/lib/cases";
 import { fmtDate, logCase, update, useDB, type Case } from "@/lib/store";
 import {
-  ActionPanel, Alert, Btn, CardGrid, CaseCard, CheckRow, DataTable, Empty, LawCard, MetricCard, Panel, PrecCard, Section, SelectField, StepList, TextBtn, btnCls,
+  ActionPanel, Alert, Btn, runBusy, CardGrid, CaseCard, CheckRow, DataTable, Empty, LawCard, MetricCard, Panel, PrecCard, Section, SelectField, StepList, TextBtn, btnCls,
 } from "@/components/ui";
 
 const edit = (id: string, fn: (c: Case) => void, log?: string) =>
@@ -25,7 +25,8 @@ export function OverviewTab({ c, docCount, go }: { c: Case; docCount: number; go
   };
   const held = c.evidence.filter((e) => e.legalHold && !e.deletedAt).length;
 
-  async function remove() {
+  const remove = () => runBusy("사건 삭제 중", doRemove, 600);
+  async function doRemove() {
     await clearCaseFiles(c);
     update((db) => {
       db.cases = db.cases.filter((x) => x.id !== c.id);
@@ -108,7 +109,7 @@ export function AnalysisTab({ c }: { c: Case }) {
               return (
                 <CaseCard key={x.id} badges={[{ text: a?.disputes[0]?.name.split(" ")[0] || "분류 전", tone: "blue" }, a ? { text: a.confidence, tone: a.confidence === "근거 충분" ? "green" : "amber" } : { text: "답변 대기", tone: "amber" }]}
                   title={x.title} desc={a?.summary} meta={`최근 업데이트 ${fmtDate(x.updatedAt)}`}
-                  footer={<span className="flex shrink-0 items-center gap-3"><TextBtn tone="muted" onClick={() => link(x.id, false)}>연결 해제</TextBtn><Link href={`/ai?c=${x.id}`} className="t-label">상담 보기 →</Link></span>} />
+                  footer={<span className="flex shrink-0 items-center gap-3"><TextBtn tone="muted" onClick={() => runBusy("연결 해제 중", () => link(x.id, false))}>연결 해제</TextBtn><Link href={`/ai?c=${x.id}`} className="t-label">상담 보기 →</Link></span>} />
               );
             })}
           </CardGrid>
@@ -118,7 +119,7 @@ export function AnalysisTab({ c }: { c: Case }) {
         <Section title="기존 상담 연결" desc="사건에 연결되지 않은 상담을 골라 붙입니다" kicker="LINK">
           <Panel>
             <SelectField label="상담 고르기" value={pick} onChange={setPick} options={[{ value: "", label: "선택하세요" }, ...free.map((x) => ({ value: x.id, label: `${x.title} (${fmtDate(x.updatedAt)})` }))]} />
-            <Btn kind="secondary" disabled={!pick} onClick={() => { link(pick, true); setPick(""); }}>이 사건에 연결</Btn>
+            <Btn kind="secondary" disabled={!pick} onClick={() => runBusy("연결하는 중", () => { link(pick, true); setPick(""); })}>이 사건에 연결</Btn>
           </Panel>
         </Section>
       )}
@@ -181,7 +182,7 @@ export function DocsTab({ c }: { c: Case }) {
             {linked.map((d) => (
               <CaseCard key={d.id} badges={[{ text: templateById(d.templateId)?.category || "서류", tone: "blue" }, { text: `버전 ${d.version}`, tone: "gray" }]}
                 title={d.title} meta={`최근 수정 ${fmtDate(d.updatedAt)}`}
-                footer={<span className="flex shrink-0 items-center gap-3"><TextBtn tone="muted" onClick={() => link(d.id, false)}>연결 해제</TextBtn><Link href={`/docs/${d.templateId}?doc=${d.id}`} className="t-label">열기 →</Link></span>} />
+                footer={<span className="flex shrink-0 items-center gap-3"><TextBtn tone="muted" onClick={() => runBusy("연결 해제 중", () => link(d.id, false))}>연결 해제</TextBtn><Link href={`/docs/${d.templateId}?doc=${d.id}`} className="t-label">열기 →</Link></span>} />
             ))}
           </CardGrid>
         )}
@@ -198,7 +199,7 @@ export function DocsTab({ c }: { c: Case }) {
         <Section title="기존 서류 연결" kicker="LINK">
           <Panel>
             <SelectField label="내 서류 고르기" value={pick} onChange={setPick} options={[{ value: "", label: "선택하세요" }, ...free.map((d) => ({ value: d.id, label: `${d.title} (v${d.version})` }))]} />
-            <Btn kind="secondary" disabled={!pick} onClick={() => { link(pick, true); setPick(""); }}>이 사건에 연결</Btn>
+            <Btn kind="secondary" disabled={!pick} onClick={() => runBusy("연결하는 중", () => { link(pick, true); setPick(""); })}>이 사건에 연결</Btn>
           </Panel>
         </Section>
       )}

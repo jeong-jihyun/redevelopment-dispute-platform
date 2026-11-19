@@ -5,7 +5,7 @@ import { BUSINESS_TYPES, ROLES, disputeById } from "@/lib/data";
 import { maskSensitive } from "@/lib/analyze";
 import { CASE_STATUSES, disputeOptions, stageOptions } from "@/lib/cases";
 import { getDB, logCase, now, uid, update, type Case } from "@/lib/store";
-import { Alert, Btn, Disclaimer, Field, Page, PageHeader, Panel, Section, SelectField, TopBar, inputCls } from "@/components/ui";
+import { Alert, Btn, runBusy, Disclaimer, Field, Page, PageHeader, Panel, Section, SelectField, TopBar, inputCls } from "@/components/ui";
 
 type Form = Pick<Case, "title" | "businessType" | "region" | "projectName" | "stage" | "role" | "disputeType" | "eventDate" | "description" | "status">;
 const EMPTY: Form = { title: "", businessType: "재개발사업", region: "", projectName: "", stage: "", role: "", disputeType: "", eventDate: "", description: "", status: "진행 중" };
@@ -57,9 +57,14 @@ function Inner() {
   const missing = REQUIRED.filter((k) => !f[k].trim());
   const err = (k: keyof Form) => (tried && missing.includes(k) ? `${LABEL[k]}을(를) 입력해 주세요.` : undefined);
 
+  const done = useRef(false);
   function submit() {
     setTried(true);
     if (missing.length) { document.querySelector("[aria-invalid=true]")?.scrollIntoView({ block: "center" }); return; }
+    if (done.current) return;
+    runBusy(editId ? "수정 내용 저장 중" : "사건 만드는 중", async () => {
+    if (done.current) return;
+    done.current = true;
     const clean = { ...f, title: f.title.trim(), description: maskSensitive(f.description.trim()) };
     let id = editId || uid();
     update((db) => {
@@ -77,6 +82,8 @@ function Inner() {
       db.cases.unshift(c);
     });
     router.replace(`/cases/${id}`);
+    await new Promise((r) => setTimeout(r, 500));
+    }, 600);
   }
 
   if (notFound) return (<><TopBar title="사건 수정" back="/cases" /><Page><Alert tone="warn" title="찾을 수 없음">이 기기에 없는 사건입니다.</Alert></Page></>);
