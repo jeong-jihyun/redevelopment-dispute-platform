@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, Copy, ThumbsDown, ThumbsUp } from "lucide-react";
 import type { Analysis } from "@/lib/analyze";
 import { analysisToText } from "@/lib/chat";
+import { useDB } from "@/lib/store";
 import { Alert, Badge, BulletList, CardGrid, CaseCard, IconBtn, LawCard, Panel, PrecCard, Step, SubPanel, btnCls, type Tone } from "./ui";
 
 function Sec({ title, kicker, children }: { title: string; kicker?: string; children: React.ReactNode }) {
@@ -18,6 +19,9 @@ function Sec({ title, kicker, children }: { title: string; kicker?: string; chil
   );
 }
 export default function AnalysisCard({ a, note, convId }: { a: Analysis; note?: string; convId?: string }) {
+  const db = useDB();
+  const conv = convId ? db.conversations.find((x) => x.id === convId) : undefined;
+  const linkedCase = conv?.caseId ? db.cases.find((x) => x.id === conv.caseId) : undefined;
   const [copied, setCopied] = useState(false);
   const [vote, setVote] = useState<"up" | "down" | null>(null);
   const expertTone: Tone = a.expertNeeded.level === "높음" ? "red" : a.expertNeeded.level === "보통" ? "amber" : "green";
@@ -82,7 +86,16 @@ export default function AnalysisCard({ a, note, convId }: { a: Analysis; note?: 
       {a.steps.length > 0 && <Sec title="다음 단계 행동" kicker="NEXT ACTION">{a.steps.map((s, i) => <Step key={s} n={i + 1} title={s} />)}</Sec>}
       {a.docs.length > 0 && (
         <Sec title="추천 서류">
-          <div className="flex flex-wrap gap-[9px]">{a.docs.map((d) => <Link key={d.id} href={`/docs/${d.id}${convId ? `?from=${convId}` : ""}`} className={btnCls("secondary")}>{d.name}</Link>)}</div>
+          <div className="flex flex-wrap gap-[9px]">{a.docs.map((d) => <Link key={d.id} href={`/docs/${d.id}${convId ? `?from=${convId}` : ""}${linkedCase ? `${convId ? "&" : "?"}case=${linkedCase.id}` : ""}`} className={btnCls("secondary")}>{d.name}</Link>)}</div>
+        </Sec>
+      )}
+      {convId && (
+        <Sec title="사건 관리">
+          {linkedCase ? (
+            <div className="flex flex-wrap items-center gap-[9px]"><p className="t-body flex-1">이 상담은 ‘{linkedCase.title}’ 사건에 연결되어 있습니다.</p><Link href={`/cases/${linkedCase.id}?tab=analysis`} className={btnCls("secondary")}>사건으로 이동</Link></div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-[9px]"><p className="t-body flex-1">증거자료·기한·서류를 한곳에서 관리하려면 사건으로 만드세요.</p><Link href={`/cases/new?from=${convId}`} className={btnCls("secondary")}>이 상담으로 사건 만들기</Link></div>
+          )}
         </Sec>
       )}
       <Sec title="전문가 상담 필요성">

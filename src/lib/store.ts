@@ -8,7 +8,7 @@ export type Schedule = { id: string; title: string; date: string; kind: "기한"
 export type Evidence = {
   id: string; name: string; type: string; size: number; category: string; number: string;
   hash: string; createdAt: string; updatedAt: string; createdBy: string; retentionUntil?: string;
-  deletedAt?: string; legalHold?: boolean; access: string; memo?: string; versions: { at: string; hash: string; note: string }[];
+  deletedAt?: string; legalHold?: boolean; access: string; memo?: string; review?: string; docDate?: string; versions: { at: string; hash: string; note: string }[];
 };
 export type GenDoc = { id: string; templateId: string; title: string; values: Record<string, string>; lawIds?: string[]; body: string; edited?: boolean; caseId?: string; createdAt: string; updatedAt: string; version: number };
 export type Log = { at: string; who: string; action: string };
@@ -106,4 +106,9 @@ export function fmtDate(iso?: string) {
 }
 export function fmtSize(n: number) {
   return n > 1048576 ? (n / 1048576).toFixed(1) + "MB" : Math.max(1, Math.round(n / 1024)) + "KB";
+}
+
+/** 첫 화면 그리기(서버·기기 공통)가 끝났는지 — 기기 저장소를 읽기 전 '없음' 안내가 깜빡이지 않게 */
+export function useMounted() {
+  return useSyncExternalStore(() => () => {}, () => true, () => false);
 }

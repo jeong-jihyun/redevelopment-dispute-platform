@@ -6,7 +6,7 @@ import { Loader2, Plus } from "lucide-react";
 import { disputeById } from "@/lib/data";
 import { detectFacts, maskSensitive, type Facts } from "@/lib/analyze";
 import { analyzeQuestion, nextFollowUp } from "@/lib/chat";
-import { getDB, now, uid, update, useDB, type Conversation, type Msg } from "@/lib/store";
+import { getDB, logCase, now, uid, update, useDB, useMounted, type Conversation, type Msg } from "@/lib/store";
 import AnalysisCard from "@/components/AnalysisCard";
 import { Alert, Badge, Btn, CardGrid, CaseCard, Disclaimer, Empty, Loading, Page, Panel, SearchHero, Section, StepList, TextBtn, TopBar, btnCls, inputCls } from "@/components/ui";
 
@@ -179,6 +179,8 @@ function Start({ aiOn }: { aiOn: boolean | null }) {
   const topicId = sp.get("topic") || undefined;
   const topic = topicId ? disputeById(topicId) : undefined;
   const preset = sp.get("q");
+  const caseId = sp.get("case");
+  const linkCase = caseId ? db.cases.find((x) => x.id === caseId) : undefined;
   const started = useRef(false);
 
   function start(text: string) {
@@ -186,7 +188,10 @@ function Start({ aiOn }: { aiOn: boolean | null }) {
     if (!t) return;
     const id = uid();
     update((d) => {
-      d.conversations.unshift({ id, title: t.slice(0, 40), topic: topicId, facts: detectFacts(t), messages: [{ role: "user", text: t, at: now() }], pendingQuestion: t, skipped: [], createdAt: now(), updatedAt: now() });
+      const cs = linkCase ? d.cases.find((x) => x.id === linkCase.id) : undefined;
+      const facts = detectFacts(t);
+      if (cs) { facts.businessType ||= cs.businessType; facts.stage ||= cs.stage || undefined; facts.role ||= cs.role || undefined; logCase(cs, `AI 상담 시작 · ${t.slice(0, 30)}`); }
+      d.conversations.unshift({ id, title: t.slice(0, 40), topic: topicId || cs?.disputeType || undefined, caseId: cs?.id, facts, messages: [{ role: "user", text: t, at: now() }], pendingQuestion: t, skipped: [], createdAt: now(), updatedAt: now() });
     });
     router.replace(`/ai?c=${id}`);
   }
@@ -201,6 +206,7 @@ function Start({ aiOn }: { aiOn: boolean | null }) {
           aiOn === null ? { text: "연결 확인 중", tone: "gray" } : aiOn ? { text: "AI 분석 연결됨", tone: "blue" } : { text: "기본 분석 모드", tone: "gray" },
           { text: "확인된 법령·판례만 인용", tone: "green" },
           ...(topic ? [{ text: `상담 주제 · ${topic.short}`, tone: "purple" as const }] : []),
+          ...(linkCase ? [{ text: `사건 연결 · ${linkCase.title}`, tone: "blue" as const }] : []),
         ]}
         multiline label="상황 설명" button="분석 시작" maxLength={MAX} value={text} onChange={(v) => { setText(v); if (v.trim()) setTouched(false); }}
         placeholder={topic ? `예) ${topic.short} 관련해서 조합에서 통보를 받았는데…` : "예) 조합에 총회 회의록 열람을 요청했는데 한 달째 답이 없어요"}
@@ -254,10 +260,12 @@ function Inner() {
   const sp = useSearchParams();
   const db = useDB();
   const aiOn = useStatus();
+  const mounted = useMounted();
   const cid = sp.get("c");
   const c = cid ? db.conversations.find((x) => x.id === cid) : undefined;
 
-  if (cid && !c && typeof window !== "undefined") {
+  if (cid && !c) {
+    if (!mounted) return <TopBar title="AI 상담" crumb="도시정비 분쟁지원" back="/ai" />;
     return (<><TopBar title="AI 상담" crumb="도시정비 분쟁지원" back="/ai" /><Page><Empty>상담 기록을 찾을 수 없습니다. 다른 기기에서 만든 상담은 이 기기에 없습니다.</Empty></Page></>);
   }
   if (c) {

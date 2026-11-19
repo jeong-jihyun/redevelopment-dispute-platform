@@ -334,9 +334,9 @@ export function Field({ label, required, help, error, children }: { label: strin
 }
 export const inputCls = "w-full rounded-[9px] border border-line-strong bg-white px-3 py-2.5 text-ink-900 outline-none focus:border-blue-500 focus:shadow-[0_0_0_3px_#3978ea20] focus-visible:outline-none";
 
-export function SelectField({ label, value, onChange, options, help }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; help?: string }) {
+export function SelectField({ label, value, onChange, options, help, required }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; help?: string; required?: boolean }) {
   return (
-    <Field label={label} help={help}>
+    <Field label={label} help={help} required={required}>
       <select value={value} onChange={(e) => onChange(e.target.value)} className={inputCls}>
         {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
@@ -461,4 +461,32 @@ export function IconBtn({ label, on, tone = "blue", onClick, children }: { label
 export function TextBtn({ children, onClick, tone = "default" }: { children: ReactNode; onClick: () => void; tone?: "default" | "muted" | "danger" }) {
   const t = { default: "text-ink-700", muted: "text-ink-500", danger: "text-red" }[tone];
   return <button type="button" onClick={onClick} className={`t-label min-h-9 ${t}`}>{children}</button>;
+}
+
+/** 화면 안 탭 (사건 상세 등). 현재 탭 = 현재 메뉴와 같은 Blue 600 밑줄, 가로 스크롤, 화면 위에 고정 */
+export function Tabs({ tabs, value, onChange }: { tabs: { id: string; label: string; count?: number }[]; value: string; onChange: (id: string) => void }) {
+  return (
+    <div role="tablist" className="no-print no-scrollbar sticky top-[58px] z-20 -mx-4 mt-5 flex overflow-x-auto border-b border-line bg-canvas px-2 tab:top-[68px] tab:mx-0 tab:px-0">
+      {tabs.map((t) => {
+        const on = t.id === value;
+        return (
+          <button key={t.id} type="button" role="tab" aria-selected={on} onClick={(e) => { onChange(t.id); e.currentTarget.scrollIntoView({ inline: "center", block: "nearest" }); }}
+            className={`min-h-11 shrink-0 whitespace-nowrap border-b-2 px-3 text-[13px] font-bold ${on ? "border-blue-600 text-blue-600" : "border-transparent text-ink-500 hover:text-ink-900"}`}>
+            {t.label}{t.count != null && t.count > 0 && <span className={`ml-1 text-[11px] ${on ? "text-blue-600" : "text-ink-400"}`}>{t.count}</span>}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** 켜고 끄는 설정 한 줄 (체크박스 + 제목 + 설명) */
+export function CheckRow({ checked, onChange, title, desc, right }: { checked: boolean; onChange: (v: boolean) => void; title: string; desc?: string; right?: ReactNode }) {
+  return (
+    <label className="flex cursor-pointer items-start gap-3 border-b border-line py-3 last:border-0">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-1 h-5 w-5 shrink-0 accent-blue-600" />
+      <span className="min-w-0 flex-1"><span className="t-title block">{title}</span>{desc && <span className="t-desc block">{desc}</span>}</span>
+      {right && <span className="shrink-0">{right}</span>}
+    </label>
+  );
 }

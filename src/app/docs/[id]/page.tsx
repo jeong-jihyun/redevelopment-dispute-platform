@@ -5,7 +5,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { DISPUTES, lawById, templateById } from "@/lib/data";
 import { buildBody, downloadDocx, missingFields, printPdf } from "@/lib/docgen";
-import { getDB, now, uid, update } from "@/lib/store";
+import { fmtDate, getDB, logCase, now, uid, update } from "@/lib/store";
 import {
   Alert, Btn, Disclaimer, Empty, Field, Page, PageHeader, Panel, Section, StepList, TextBtn, TopBar, btnCls, inputCls, type BadgeSpec,
 } from "@/components/ui";
@@ -20,6 +20,7 @@ function Inner() {
   const t = templateById(id);
   const docId = sp.get("doc");
   const fromConv = sp.get("from");
+  const caseParam = sp.get("case");
 
   const lawChoices = useMemo(() => {
     if (!t) return [];
@@ -52,8 +53,9 @@ function Inner() {
         return;
       }
     }
+    const cs = caseParam ? db.cases.find((x) => x.id === caseParam) : undefined;
     try {
-      const raw = localStorage.getItem(draftKey(t.id));
+      const raw = cs ? null : localStorage.getItem(draftKey(t.id));
       if (raw) {
         const dr = JSON.parse(raw) as Draft;
         setValues(dr.values); setLawIds(dr.lawIds); setSavedAt(dr.savedAt);
@@ -72,8 +74,17 @@ function Inner() {
         setNotice({ tone: "info", title: "AI 상담 내용 반영", text: "상담에서 적은 상황을 '주요 사실관계'에 넣어 두었습니다. 날짜 순서로 다듬어 주세요." });
       }
     }
+    if (cs) {
+      const ev = cs.evidence.filter((e) => !e.deletedAt);
+      Object.assign(init, {
+        projectName: cs.projectName, eventDate: cs.eventDate || "", facts: init.facts || cs.description,
+        attachments: ev.map((e) => `${e.number} ${e.name}${e.docDate ? ` (${e.docDate})` : ""}`).join("\n"),
+      });
+      setLawIds(Array.from(new Set([...(t.laws || []), ...cs.lawIds])));
+      setNotice({ tone: "info", title: "사건 내용 반영", text: `‘${cs.title}’ 사건의 사업명·발생일·사건 설명·증거 목록 ${ev.length}건·근거 법령을 채웠습니다. 저장하면 사건에 연결됩니다.` });
+    }
     setValues(init);
-  }, [t, docId, fromConv]);
+  }, [t, docId, fromConv, caseParam]);
 
   // 입력 중 자동 임시 저장 (저장된 서류를 고치는 중이 아닐 때)
   useEffect(() => {
@@ -115,12 +126,15 @@ function Inner() {
         ex.title = `${t!.title} — ${values.recipient || values.projectName || "제목 없음"}`;
       } else {
         newId = uid();
-        db.docs.unshift({ id: newId, templateId: t!.id, title: `${t!.title} — ${values.recipient || values.projectName || "제목 없음"}`, values, lawIds, body, edited, createdAt: at, updatedAt: at, version: 1 });
+        db.docs.unshift({ id: newId, templateId: t!.id, title: `${t!.title} — ${values.recipient || values.projectName || "제목 없음"}`, values, lawIds, body, edited, caseId: caseParam && db.cases.some((c) => c.id === caseParam) ? caseParam : undefined, createdAt: at, updatedAt: at, version: 1 });
       }
+      const d = db.docs.find((x) => x.id === newId);
+      const cs = d?.caseId ? db.cases.find((c) => c.id === d.caseId) : undefined;
+      if (cs && d) logCase(cs, `서류 저장 · ${d.title} (v${ver}, ${fmtDate(at)})`);
     });
     try { localStorage.removeItem(draftKey(t!.id)); } catch { /* 무시 */ }
     setCurrentDoc(newId);
-    if (newId && !docId) router.replace(`/docs/${t!.id}?doc=${newId}`);
+    if (newId && !docId) router.replace(`/docs/${t!.id}?doc=${newId}${caseParam ? `&case=${caseParam}` : ""}`);
     setNotice({ tone: "info", title: "저장 완료", text: `내 서류에 버전 ${ver}로 저장했습니다. 서류 목록의 '내가 만든 서류'에서 다시 열 수 있습니다.` });
   }
 
@@ -216,7 +230,7 @@ function Inner() {
             <div className="mt-4 flex flex-wrap gap-[9px]">
               <Btn kind="secondary" onClick={() => { setStep("input"); window.scrollTo({ top: 0 }); }}>입력 내용 고치기</Btn>
               <Btn kind="ghost" onClick={() => { navigator.clipboard?.writeText(body); setNotice({ tone: "info", title: "복사", text: "서류 내용을 복사했습니다." }); }}>내용 복사</Btn>
-              <Link href="/docs" className={btnCls("ghost")}>서류 목록</Link>
+              {caseParam ? <Link href={`/cases/${caseParam}?tab=docs`} className={btnCls("ghost")}>사건으로 돌아가기</Link> : <Link href="/docs" className={btnCls("ghost")}>서류 목록</Link>}
             </div>
           </>
         )}

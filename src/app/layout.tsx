@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { BottomNav, Sidebar } from "@/components/ui";
+import Notifier from "@/components/Notifier";
 
 export const metadata: Metadata = {
   title: "도시정비 분쟁지원 · 재개발 분쟁 도우미",
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="min-w-0 flex-1">{children}</div>
         </div>
         <BottomNav />
+        <Notifier />
       </body>
     </html>
   );
