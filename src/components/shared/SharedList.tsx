@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { ROLE_LABEL, cloudReady, mySharedCases, useLoad, useSession } from "@/lib/cloud";
+import { ROLE_LABEL, cloudReady, mySharedCases, useLoad, useSession, acct } from "@/lib/cloud";
 import { useNews } from "@/lib/notify";
 import { fmtDate } from "@/lib/store";
 import { Alert, CardGrid, CaseCard, Empty, Loading, Section } from "@/components/ui";
@@ -28,7 +28,7 @@ export default function SharedList() {
             ))}
           </CardGrid>
         )}
-      {session && <p className="t-meta mt-2"><Link href="/auth" className="underline">{session.user.email}</Link>로 로그인됨</p>}
+      {session && <p className="t-meta mt-2"><Link href="/auth" className="underline">{acct(session.user)}</Link>로 로그인됨</p>}
     </Section>
   );
 }

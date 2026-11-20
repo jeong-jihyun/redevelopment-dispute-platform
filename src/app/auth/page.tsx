@@ -1,9 +1,10 @@
 "use client";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { cloudReady, sendLogin, signOut, useSession, verifyCode } from "@/lib/cloud";
-import { getDB } from "@/lib/store";
-import { Alert, Btn, Disclaimer, Field, Loading, Page, PageHeader, Panel, Section, StepList, TopBar, inputCls, runBusy } from "@/components/ui";
+import { SOCIAL, acct, cloudReady, isConsented, saveConsent, sendLogin, signInSocial, signOut, useSession, verifyCode, type Social } from "@/lib/cloud";
+import { getDB, update } from "@/lib/store";
+import { Alert, Btn, Disclaimer, Field, Loading, Page, PageHeader, Panel, Section, StepList, SocialBtn, Tabs, TopBar, btnCls, inputCls, runBusy } from "@/components/ui";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -17,28 +18,51 @@ function Inner() {
   const [sent, setSent] = useState(false);
   const [msg, setMsg] = useState<{ tone: "info" | "warn" | "danger"; text: string } | null>(null);
   const [cool, setCool] = useState(0);
+  const [mode, setMode] = useState<"login" | "join">(sp.get("mode") === "join" ? "join" : "login");
+  const join = mode === "join";
+  const [name, setName] = useState("");
+  const [agree, setAgree] = useState(false);
+  const needConsent = !!session && !isConsented(session.user); // 간편로그인·기존 계정: 이름과 이용 동의를 한 번 받음
+  useEffect(() => { if (needConsent && session) { const m = session.user.user_metadata || {}; setName((n) => n || String(m.name || m.full_name || m.nickname || "")); } }, [needConsent, session]);
+  const social = (p: Social) => runBusy("간편로그인 연결 중", async () => { try { await signInSocial(p, next); } catch (e) { setMsg({ tone: "danger", text: e instanceof Error ? e.message : "연결하지 못했습니다." }); } });
+  const consent = () => {
+    if (name.trim().length < 2) { setMsg({ tone: "danger", text: "이름을 2자 이상 적어 주세요." }); return; }
+    if (!agree) { setMsg({ tone: "danger", text: "이용 안내·개인정보 수집에 동의해야 시작할 수 있습니다." }); return; }
+    runBusy("저장 중", async () => {
+      try {
+        await saveConsent(name.trim());
+        if (!getDB().profile?.name) update((d) => { d.profile = { name: name.trim(), email: session?.user.email || "", role: "", region: "", notify: true, joinedAt: new Date().toISOString() }; });
+        setFresh(true); router.replace(next);
+      } catch (e) { setMsg({ tone: "danger", text: e instanceof Error ? e.message : "저장하지 못했습니다." }); }
+    });
+  };
 
   useEffect(() => { const p = getDB().profile?.email; if (p) setEmail(p); try { const e = sessionStorage.getItem("redev-login-email"); if (e) { setEmail(e); setSent(true); } } catch { /* 무시 */ } }, []);
   const [fresh, setFresh] = useState(false); // 방금 로그인한 경우에만 자동 이동 (이미 로그인된 상태로 열면 계정 바꾸기 선택을 보여 줌)
   useEffect(() => { if (/access_token|[?&]code=/.test(location.hash + location.search)) setFresh(true); }, []);
-  useEffect(() => { if (session && fresh) router.replace(next); }, [session, fresh, next, router]);
+  useEffect(() => { if (session && fresh && isConsented(session.user)) { try { const n = sessionStorage.getItem("redev-join-name"); if (n && !getDB().profile?.name) update((db) => { db.profile = { name: n, email: session.user.email || "", role: "", region: "", notify: true, joinedAt: new Date().toISOString() }; }); sessionStorage.removeItem("redev-join-name"); } catch { /* 무시 */ } router.replace(next); } }, [session, fresh, next, router]);
   useEffect(() => { if (!cool) return; const t = setTimeout(() => setCool(cool - 1), 1000); return () => clearTimeout(t); }, [cool]);
 
   const send = () => {
     if (!EMAIL.test(email.trim())) { setMsg({ tone: "danger", text: "이메일 주소를 확인해 주세요." }); return; }
-    runBusy("로그인 메일 보내는 중", async () => {
+    if (join && name.trim().length < 2) { setMsg({ tone: "danger", text: "이름을 2자 이상 적어 주세요." }); return; }
+    if (join && !agree) { setMsg({ tone: "danger", text: "이용 안내·개인정보 수집에 동의해야 가입할 수 있습니다." }); return; }
+    runBusy(join ? "가입 메일 보내는 중" : "로그인 메일 보내는 중", async () => {
       try {
-        await sendLogin(email.trim(), next);
+        await sendLogin(email.trim(), next, join ? { name: name.trim() } : undefined);
+        if (join) try { sessionStorage.setItem("redev-join-name", name.trim()); } catch { /* 무시 */ }
         try { sessionStorage.setItem("redev-login-email", email.trim()); } catch { /* 무시 */ }
         setSent(true); setCool(60);
         setMsg({ tone: "info", text: `${email.trim()}로 메일을 보냈습니다. 메일의 ‘로그인’ 버튼을 누르거나, 6자리 코드를 아래에 입력하세요. 메일이 없으면 스팸함·기타 폴더도 확인하세요. 코드는 한 시간 안에만 쓸 수 있고, 가장 최근 메일의 코드만 맞습니다.` });
       } catch (e) { setMsg({ tone: "danger", text: e instanceof Error ? e.message : "보내지 못했습니다." }); }
     });
   };
+  // 가입 때 적은 이름을 이 기기의 회원정보에 채움
+  const syncName = (em: string) => { try { const n = sessionStorage.getItem("redev-join-name"); if (n && !getDB().profile?.name) update((db) => { db.profile = { name: n, email: em, role: "", region: "", notify: true, joinedAt: new Date().toISOString() }; }); sessionStorage.removeItem("redev-join-name"); } catch { /* 무시 */ } };
   const verify = () => {
     if (!/^\d{6}$/.test(code.trim())) { setMsg({ tone: "danger", text: "메일에 있는 6자리 숫자를 입력해 주세요." }); return; }
     runBusy("로그인 확인 중", async () => {
-      try { await verifyCode(email.trim(), code); setFresh(true); try { sessionStorage.removeItem("redev-login-email"); } catch { /* 무시 */ } }
+      try { await verifyCode(email.trim(), code); syncName(email.trim()); setFresh(true); try { sessionStorage.removeItem("redev-login-email"); } catch { /* 무시 */ } }
       catch (e) { setMsg({ tone: "danger", text: e instanceof Error ? e.message : "확인하지 못했습니다." }); }
     });
   };
@@ -47,13 +71,32 @@ function Inner() {
 
   return (
     <>
-      <TopBar title="로그인" crumb="공유·커뮤니티" />
+      <TopBar title={join ? "회원가입" : "로그인"} crumb="공유·커뮤니티" back="/" right={<Link href="/" className={btnCls("secondary")}>← 처음으로</Link>} />
       <Page>
-        <PageHeader eyebrow="SIGN IN" title="로그인 · 회원가입" lead="처음이면 자동으로 가입됩니다. 비밀번호 없이, 메일로 받은 6자리 코드나 링크로 로그인합니다." />
+        <Tabs tabs={[{ id: "login", label: "로그인" }, { id: "join", label: "회원가입" }]} value={mode} onChange={(id) => { setMode(id as "login" | "join"); setMsg(null); }} />
+        <PageHeader eyebrow={join ? "SIGN UP" : "SIGN IN"} title={join ? "회원가입" : "로그인"} lead={join ? "처음이라면 이메일 하나로 가입합니다. 비밀번호는 없고, 메일로 받은 6자리 코드로 확인합니다." : "이미 가입했다면 이메일로 받은 6자리 코드나 링크로 로그인합니다. 비밀번호는 없습니다."} />
+        {session === null && <p className="mb-4 text-sm text-ink-500">가입하지 않아도 <Link href="/" className="font-semibold text-blue-600 underline">홈에서 법령·판례 검색</Link>은 볼 수 있습니다.</p>}
         {session === undefined && <Loading>로그인 상태 확인 중</Loading>}
-        {session && (
+        {needConsent && (
+          <Section title="이름과 이용 동의" desc="처음 한 번만 받습니다" kicker="WELCOME">
+            <Panel>
+              <Field label="이름" required help="공유 사건·커뮤니티·동의서에 표시되는 이름입니다.">
+                <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" className={inputCls} placeholder="홍길동" />
+              </Field>
+              <label className="mb-4 flex items-start gap-2 text-sm text-ink-700">
+                <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-1 h-4 w-4" />
+                <span><b>(필수)</b> 이름·이메일을 로그인과 공유 사건 참여자 표시에 쓰는 것에 동의합니다. 증거 원본·상담 내용은 서버로 보내지 않으며, 이 서비스는 법률정보 제공이지 변호사의 법률의견이 아님을 확인합니다.</span>
+              </label>
+              <div className="flex flex-wrap gap-[9px]">
+                <Btn onClick={consent}>동의하고 시작</Btn>
+                <Btn kind="secondary" onClick={() => runBusy("로그아웃 중", signOut)}>취소(로그아웃)</Btn>
+              </div>
+            </Panel>
+          </Section>
+        )}
+        {session && !needConsent && (
           <Alert tone="info" title="지금 로그인된 계정">
-            {session.user.email}로 로그인되어 있습니다. 다른 계정으로 쓰려면 아래 버튼을 누르세요.
+            {acct(session.user)}로 로그인되어 있습니다. 다른 계정으로 쓰려면 아래 버튼을 누르세요.
             <div className="mt-3 flex flex-wrap gap-[9px]">
               <Btn onClick={() => router.replace(next)}>이 계정으로 계속</Btn>
               <Btn kind="secondary" onClick={() => runBusy("계정 바꾸는 중", async () => { await signOut(); setSent(false); setCode(""); setMsg(null); setEmail(""); })}>다른 계정으로 로그인</Btn>
@@ -62,14 +105,36 @@ function Inner() {
         )}
         {msg && <Alert tone={msg.tone} title={msg.tone === "danger" ? "확인 필요" : "메일 보냄"}>{msg.text}</Alert>}
 
-        <Section title="1. 이메일 입력" kicker="EMAIL">
+        {!session && SOCIAL.length > 0 && (
+          <Section title={join ? "간편 가입" : "간편 로그인"} desc="처음이면 이름·이용 동의 한 번만 받습니다" kicker="SOCIAL">
+            <Panel>
+              <div className="grid gap-2">
+                {SOCIAL.includes("google") && <SocialBtn kind="google" onClick={() => social("google")}>구글로 {join ? "가입" : "로그인"}</SocialBtn>}
+                {SOCIAL.includes("kakao") && <SocialBtn kind="kakao" onClick={() => social("kakao")}>카카오로 {join ? "가입" : "로그인"}</SocialBtn>}
+                {SOCIAL.includes("naver") && <SocialBtn kind="naver" onClick={() => social("naver")}>네이버로 {join ? "가입" : "로그인"}</SocialBtn>}
+              </div>
+            </Panel>
+          </Section>
+        )}
+        {!session && <Section title={join ? "이메일로 가입" : "이메일로 로그인"} kicker="EMAIL">
           <Panel>
-            <Field label="이메일" required help="처음이면 자동으로 가입됩니다.">
+            {join && (
+              <Field label="이름" required help="공유 사건·커뮤니티·동의서에 표시되는 이름입니다.">
+                <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" className={inputCls} placeholder="홍길동" />
+              </Field>
+            )}
+            <Field label="이메일" required help={join ? "입력한 이메일이 내 계정이 됩니다." : "가입한 이메일을 넣으세요. 아직 가입 전이면 ‘회원가입’ 탭을 이용하세요."}>
               <input type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} placeholder="name@example.com" onKeyDown={(e) => e.key === "Enter" && send()} />
             </Field>
-            <Btn kind={sent ? "secondary" : "primary"} onClick={send} disabled={cool > 0} className="w-full tab:w-auto">{cool > 0 ? `다시 보내기 (${cool}초)` : sent ? "메일 다시 보내기" : "로그인 메일 받기"}</Btn>
+            {join && (
+              <label className="mb-4 flex items-start gap-2 text-sm text-ink-700">
+                <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-1 h-4 w-4" />
+                <span><b>(필수)</b> 이름·이메일을 로그인과 공유 사건 참여자 표시에 쓰는 것에 동의합니다. 증거 원본·상담 내용은 서버로 보내지 않으며, 이 서비스는 법률정보 제공이지 변호사의 법률의견이 아님을 확인합니다.</span>
+              </label>
+            )}
+            <Btn kind={sent ? "secondary" : "primary"} onClick={send} disabled={cool > 0} className="w-full tab:w-auto">{cool > 0 ? `다시 보내기 (${cool}초)` : sent ? "메일 다시 보내기" : join ? "가입 메일 받기" : "로그인 메일 받기"}</Btn>
           </Panel>
-        </Section>
+        </Section>}
 
         {sent && (
           <Section title="2. 6자리 코드 입력" desc="메일 링크가 다른 앱 브라우저에서 열려 로그인이 안 되면 코드를 쓰세요" kicker="CODE">

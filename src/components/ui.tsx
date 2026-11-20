@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 import {
   AlertTriangle, BookOpen, Check, ChevronLeft, Copy, ExternalLink, FileText, FolderLock, Home, Info, LogIn, MessageCircle, Scale, Search, ShieldAlert, UserRound,
 } from "lucide-react";
-import { cloudReady, useSession } from "@/lib/cloud";
+import { cloudReady, useSession, acct } from "@/lib/cloud";
 import { DATA_CHECKED, type LawRef, type Precedent } from "@/lib/data";
 
 
@@ -104,9 +104,9 @@ function AccountChip() {
   if (!cloudReady || session === undefined) return null;
   if (!session) return <Link href="/auth?next=/my" className="rounded-full bg-blue-600 px-3 py-1.5 text-[12px] font-bold text-white">로그인 · 가입</Link>;
   return (
-    <Link href="/my" aria-label={`로그인 계정 ${session.user.email}`} className="flex max-w-[132px] items-center gap-1.5 rounded-full bg-green-bg px-2.5 py-1.5 text-[11px] font-semibold text-green tab:max-w-[220px]">
+    <Link href="/my" aria-label={`로그인 계정 ${acct(session.user)}`} className="flex max-w-[132px] items-center gap-1.5 rounded-full bg-green-bg px-2.5 py-1.5 text-[11px] font-semibold text-green tab:max-w-[220px]">
       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-green" aria-hidden />
-      <span className="truncate">{session.user.email}</span>
+      <span className="truncate">{acct(session.user)}</span>
     </Link>
   );
 }
@@ -169,6 +169,13 @@ export const btnCls = (kind: BtnKind = "primary") =>
       secondary: "border-line-strong bg-white text-ink-700 hover:bg-soft",
       ghost: "border-transparent bg-transparent text-ink-700 hover:bg-canvas",
       danger: "border-[#f7cbd1] bg-red-bg text-red" }[kind]}`;
+
+/** 간편로그인 버튼 — 서비스 고유 색은 이 파일에서만 */
+export function SocialBtn({ kind, onClick, children }: { kind: "google" | "kakao" | "naver"; onClick: () => void; children: ReactNode }) {
+  const busy = useBusy();
+  const tone = { google: "border border-line-strong bg-white text-ink-900", kakao: "bg-[#fee500] text-[#191919]", naver: "bg-[#03c75a] text-white" }[kind];
+  return <button type="button" disabled={!!busy} onClick={onClick} className={`min-h-11 w-full rounded-[12px] px-4 text-sm font-bold disabled:opacity-50 ${tone}`}>{children}</button>;
+}
 
 export function Btn({ children, onClick, kind = "primary", type = "button", disabled, className = "" }: {
   children: ReactNode; onClick?: () => void; kind?: BtnKind; type?: "button" | "submit"; disabled?: boolean; className?: string;

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { ROLES } from "@/lib/data";
 import { buildIcs, clearAllFiles, exportBackup, readBackup, restoreFiles, saveFile, usedStorage } from "@/lib/cases";
 import { fmtDate, fmtSize, getDB, logAccess, now, update, useDB, type Profile } from "@/lib/store";
-import { cloudReady, signOut, useSession } from "@/lib/cloud";
+import { cloudReady, signOut, useSession, acct } from "@/lib/cloud";
 import { disablePush, enablePush, isIOS, isStandalone, pushOn, pushSupported } from "@/lib/notify";
 import SharedList from "@/components/shared/SharedList";
 import {
@@ -103,7 +103,7 @@ export default function MyPage() {
           <Section title="내 계정" desc="로그인·가입 · 사건 공유·커뮤니티·동의서에 쓰입니다" kicker="ACCOUNT">
             <Panel>
               {session ? (
-                <div className="flex flex-wrap items-center gap-[9px]"><p className="t-body flex-1">{session.user.email}로 로그인됨</p><Btn kind="secondary" onClick={() => runBusy("계정 바꾸는 중", async () => { await signOut(); update((d) => logAccess(d, "공유 계정 전환")); location.assign("/auth?next=/my"); })}>다른 계정으로 로그인</Btn><Btn kind="ghost" onClick={() => runBusy("로그아웃 중", async () => { await signOut(); update((d) => logAccess(d, "공유 계정 로그아웃")); })}>로그아웃</Btn></div>
+                <div className="flex flex-wrap items-center gap-[9px]"><p className="t-body flex-1">{acct(session.user)}로 로그인됨</p><Btn kind="secondary" onClick={() => runBusy("계정 바꾸는 중", async () => { await signOut(); update((d) => logAccess(d, "공유 계정 전환")); location.assign("/auth?next=/my"); })}>다른 계정으로 로그인</Btn><Btn kind="ghost" onClick={() => runBusy("로그아웃 중", async () => { await signOut(); update((d) => logAccess(d, "공유 계정 로그아웃")); })}>로그아웃</Btn></div>
               ) : (
                 <div className="flex flex-wrap items-center gap-[9px]"><p className="t-desc flex-1">지금은 로그인하지 않은 상태입니다. 이메일로 로그인하면 처음에는 자동으로 가입됩니다. 내 사건은 로그인 없이도 쓸 수 있고, 공유·커뮤니티·동의서에만 필요합니다.</p><Link href="/auth?next=/my" className={btnCls("secondary")}>로그인 · 가입</Link></div>
               )}

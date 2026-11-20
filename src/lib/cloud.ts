@@ -32,18 +32,42 @@ export function useSession() {
 }
 
 /** 이메일로 로그인 링크·6자리 코드 보내기 */
-export async function sendLogin(email: string, next: string) {
+export async function sendLogin(email: string, next: string, join?: { name: string }) {
   const redirect = `${location.origin}/auth?next=${encodeURIComponent(next)}`;
-  const { error } = await sb().auth.signInWithOtp({ email, options: { emailRedirectTo: redirect, shouldCreateUser: true } });
+  // 로그인: 이미 가입한 이메일만 / 회원가입: 이름·동의 기록과 함께 새 계정 생성
+  const options = join
+    ? { emailRedirectTo: redirect, shouldCreateUser: true, data: { name: join.name, terms_agreed_at: new Date().toISOString() } }
+    : { emailRedirectTo: redirect, shouldCreateUser: false };
+  const { error } = await sb().auth.signInWithOtp({ email, options });
   if (error) throw new Error(kErr(error.message));
 }
 export async function verifyCode(email: string, code: string) {
   const { error } = await sb().auth.verifyOtp({ email, token: code.trim(), type: "email" });
   if (error) throw new Error(kErr(error.message));
 }
+/* ───── 간편로그인 (구글·카카오·네이버) — 켜 둔 것만 버튼이 보임 ───── */
+export type Social = "google" | "kakao" | "naver";
+export const SOCIAL: Social[] = (process.env.NEXT_PUBLIC_SOCIAL || "").split(",").map((x) => x.trim()).filter((x): x is Social => ["google", "kakao", "naver"].includes(x));
+export async function signInSocial(p: Social, next: string) {
+  const redirectTo = `${location.origin}/auth?next=${encodeURIComponent(next)}`;
+  const { error } = await sb().auth.signInWithOAuth({ provider: (p === "naver" ? "custom:naver" : p) as never, options: { redirectTo } });
+  if (error) throw new Error(kErr(error.message));
+}
+/** 화면에 보일 계정 이름 (카카오처럼 이메일이 없으면 이름) */
+export function acct(u: { email?: string | null; user_metadata?: Record<string, unknown> }) {
+  const m = u.user_metadata || {};
+  return u.email || String(m.name || m.full_name || m.nickname || "간편로그인 계정");
+}
+/** 이름·이용 동의까지 마친 계정인지 */
+export const isConsented = (u?: { user_metadata?: Record<string, unknown> } | null) => !!u?.user_metadata?.terms_agreed_at;
+export async function saveConsent(name: string) {
+  const { error } = await sb().auth.updateUser({ data: { name, terms_agreed_at: new Date().toISOString() } });
+  if (error) throw new Error(kErr(error.message));
+}
 export async function signOut() { await sb().auth.signOut(); }
 
 export function kErr(m: string) {
+  if (/signups? not allowed|user not found/i.test(m)) return "가입되지 않은 이메일입니다. 위의 ‘회원가입’ 탭에서 먼저 가입해 주세요.";
   if (/rate limit|too many/i.test(m)) return "메일을 너무 자주 요청했습니다. 1분쯤 뒤에 다시 시도해 주세요.";
   if (/expired|invalid.*(otp|token)|Token has expired/i.test(m)) return "코드가 틀렸거나 시간이 지났습니다. 새 메일을 받아 다시 시도해 주세요.";
   if (/invalid.*email|unable to validate email/i.test(m)) return "이메일 주소를 확인해 주세요.";

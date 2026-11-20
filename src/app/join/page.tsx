@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { notifyCase } from "@/lib/notify";
-import { cloudReady, joinCase, useSession } from "@/lib/cloud";
+import { cloudReady, joinCase, useSession, acct } from "@/lib/cloud";
 import { getDB } from "@/lib/store";
 import { Alert, Btn, Disclaimer, Field, Loading, Page, PageHeader, Panel, Section, StepList, TopBar, btnCls, inputCls, runBusy } from "@/components/ui";
 
@@ -41,7 +41,7 @@ function Inner() {
           ) : (
             <Section title="참여 정보" kicker="JOIN">
               <Panel>
-                <p className="t-desc mb-3">로그인: {session.user.email}</p>
+                <p className="t-desc mb-3">로그인: {acct(session.user)}</p>
                 <Field label="표시할 이름" required help="다른 참여자에게 이 이름으로 보이고, 동의서 서명에도 쓰입니다." error={err && !name.trim() ? err : undefined}>
                   <input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} className={inputCls} placeholder="홍길동 (101동)" />
                 </Field>
