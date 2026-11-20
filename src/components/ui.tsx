@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import {
-  AlertTriangle, BookOpen, Check, ChevronLeft, Copy, ExternalLink, FileText, FolderLock, Home, Info, MessageCircle, Scale, Search, ShieldAlert, UserRound,
+  AlertTriangle, BookOpen, Check, ChevronLeft, Copy, ExternalLink, FileText, FolderLock, Home, Info, LogIn, MessageCircle, Scale, Search, ShieldAlert, UserRound,
 } from "lucide-react";
 import { cloudReady, useSession } from "@/lib/cloud";
 import { DATA_CHECKED, type LawRef, type Precedent } from "@/lib/data";
@@ -12,30 +12,38 @@ import { DATA_CHECKED, type LawRef, type Precedent } from "@/lib/data";
 
 /* ───────── 내비게이션: 폰 하단 탭 / 태블릿 축소 사이드바 / PC 고정 사이드바 ───────── */
 const MOBILE_NAV = [
-  { href: "/", label: "홈", icon: Home },
+  { href: "/", label: "홈", icon: Home, pub: true },
   { href: "/ai", label: "AI 상담", icon: MessageCircle },
-  { href: "/laws", label: "법령·판례", icon: Scale },
+  { href: "/laws", label: "법령·판례", icon: Scale, pub: true },
   { href: "/docs", label: "서류 작성", icon: FileText },
   { href: "/cases", label: "내 사건", icon: FolderLock },
 ];
 const SIDE_NAV = [
   { group: "서비스", items: [
-    { href: "/", label: "홈", icon: Home },
-    { href: "/search", label: "통합 검색", icon: Search },
+    { href: "/", label: "홈", icon: Home, pub: true },
+    { href: "/search", label: "통합 검색", icon: Search, pub: true },
     { href: "/disputes", label: "분쟁 대응", icon: ShieldAlert },
     { href: "/ai", label: "AI 법률 도우미", icon: MessageCircle },
     { href: "/docs", label: "서류 자동 작성", icon: FileText },
   ]},
   { group: "내 작업", items: [
     { href: "/cases", label: "내 사건", icon: FolderLock },
-    { href: "/laws", label: "법률 자료", icon: BookOpen },
+    { href: "/laws", label: "법률 자료", icon: BookOpen, pub: true },
     { href: "/my", label: "마이페이지", icon: UserRound },
   ]},
 ];
+type NavItem = { href: string; label: string; icon: typeof Home; pub?: boolean };
+const LOGIN_ITEM: NavItem = { href: "/auth", label: "로그인 · 회원가입", icon: LogIn };
+/** 비회원: 열람 메뉴만 + 로그인·회원가입 / 회원: 전체(마이페이지 포함) */
+function useGuest() { const session = useSession(); return cloudReady && !session; }
 const isOn = (path: string, href: string) => (href === "/" ? path === "/" : path.startsWith(href));
 
 export function Sidebar() {
   const path = usePathname();
+  const guest = useGuest();
+  const groups = guest
+    ? [{ group: "열람", items: SIDE_NAV.flatMap((g) => g.items).filter((i: NavItem) => i.pub) }, { group: "계정", items: [LOGIN_ITEM] }]
+    : SIDE_NAV;
   return (
     <aside className="no-print sticky top-0 hidden h-screen w-[210px] shrink-0 overflow-y-auto bg-navy-950 px-3 py-6 text-[#dbe5f3] tab:block desk:w-[252px] desk:px-[18px]">
       <Link href="/" className="flex items-center gap-[11px] border-b border-[#2a3a52] px-2 pb-6">
@@ -45,7 +53,7 @@ export function Sidebar() {
           <small className="block text-[10px] tracking-[1.1px] text-[#9fb0c7]">재개발 분쟁 도우미</small>
         </span>
       </Link>
-      {SIDE_NAV.map((g) => (
+      {groups.map((g) => (
         <div key={g.group}>
           <div className="mx-2.5 mb-2 mt-6 text-[10px] font-bold tracking-[1.2px] text-[#8092aa]">{g.group}</div>
           <nav>
@@ -71,10 +79,12 @@ export function Sidebar() {
 
 export function BottomNav() {
   const path = usePathname();
+  const guest = useGuest();
+  const items: NavItem[] = guest ? [...MOBILE_NAV.filter((i: NavItem) => i.pub), { ...LOGIN_ITEM, label: "로그인·가입" }] : MOBILE_NAV;
   return (
     <nav className="no-print fixed inset-x-0 bottom-0 z-40 border-t border-line bg-white/95 backdrop-blur tab:hidden" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
       <div className="flex">
-        {MOBILE_NAV.map(({ href, label, icon: Icon }) => {
+        {items.map(({ href, label, icon: Icon }) => {
           const on = isOn(path, href);
           return (
             <Link key={href} href={href} aria-current={on ? "page" : undefined} className={`flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 text-[11px] ${on ? "font-bold text-blue-600" : "text-ink-500"}`}>
@@ -101,6 +111,17 @@ function AccountChip() {
   );
 }
 
+/** 마이페이지 아이콘 — 로그인했을 때만(로그인 전에는 로그인·가입 버튼만) */
+function ProfileLink() {
+  const session = useSession();
+  if (cloudReady && !session) return null;
+  return (
+    <Link href="/my" aria-label="마이페이지" className="grid h-[31px] w-[31px] place-items-center rounded-full bg-[#e6edfa] text-[#2d5592]">
+      <UserRound size={17} />
+    </Link>
+  );
+}
+
 export function TopBar({ title, back, right, crumb }: { title: string; back?: boolean | string; right?: ReactNode; crumb?: string }) {
   const router = useRouter();
   return (
@@ -119,9 +140,7 @@ export function TopBar({ title, back, right, crumb }: { title: string; back?: bo
           <div className="flex items-center gap-3.5">
             <span className="hidden rounded-full bg-[#f1f4f8] px-2.5 py-1.5 text-[11px] text-ink-500 desk:inline">자료 확인일 {DATA_CHECKED}</span>
             <AccountChip />
-            <Link href="/my" aria-label="마이페이지" className="grid h-[31px] w-[31px] place-items-center rounded-full bg-[#e6edfa] text-[#2d5592]">
-              <UserRound size={17} />
-            </Link>
+            <ProfileLink />
           </div>
         )}
       </div>
