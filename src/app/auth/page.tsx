@@ -19,7 +19,9 @@ function Inner() {
   const [cool, setCool] = useState(0);
 
   useEffect(() => { const p = getDB().profile?.email; if (p) setEmail(p); try { const e = sessionStorage.getItem("redev-login-email"); if (e) { setEmail(e); setSent(true); } } catch { /* 무시 */ } }, []);
-  useEffect(() => { if (session) router.replace(next); }, [session, next, router]);
+  const [fresh, setFresh] = useState(false); // 방금 로그인한 경우에만 자동 이동 (이미 로그인된 상태로 열면 계정 바꾸기 선택을 보여 줌)
+  useEffect(() => { if (/access_token|[?&]code=/.test(location.hash + location.search)) setFresh(true); }, []);
+  useEffect(() => { if (session && fresh) router.replace(next); }, [session, fresh, next, router]);
   useEffect(() => { if (!cool) return; const t = setTimeout(() => setCool(cool - 1), 1000); return () => clearTimeout(t); }, [cool]);
 
   const send = () => {
@@ -29,14 +31,14 @@ function Inner() {
         await sendLogin(email.trim(), next);
         try { sessionStorage.setItem("redev-login-email", email.trim()); } catch { /* 무시 */ }
         setSent(true); setCool(60);
-        setMsg({ tone: "info", text: `${email.trim()}로 메일을 보냈습니다. 메일의 ‘로그인’ 버튼을 누르거나, 6자리 코드를 아래에 입력하세요. 메일이 없으면 스팸함도 확인하세요.` });
+        setMsg({ tone: "info", text: `${email.trim()}로 메일을 보냈습니다. 메일의 ‘로그인’ 버튼을 누르거나, 6자리 코드를 아래에 입력하세요. 메일이 없으면 스팸함·기타 폴더도 확인하세요. 코드는 한 시간 안에만 쓸 수 있고, 가장 최근 메일의 코드만 맞습니다.` });
       } catch (e) { setMsg({ tone: "danger", text: e instanceof Error ? e.message : "보내지 못했습니다." }); }
     });
   };
   const verify = () => {
     if (!/^\d{6}$/.test(code.trim())) { setMsg({ tone: "danger", text: "메일에 있는 6자리 숫자를 입력해 주세요." }); return; }
     runBusy("로그인 확인 중", async () => {
-      try { await verifyCode(email.trim(), code); try { sessionStorage.removeItem("redev-login-email"); } catch { /* 무시 */ } }
+      try { await verifyCode(email.trim(), code); setFresh(true); try { sessionStorage.removeItem("redev-login-email"); } catch { /* 무시 */ } }
       catch (e) { setMsg({ tone: "danger", text: e instanceof Error ? e.message : "확인하지 못했습니다." }); }
     });
   };
@@ -49,7 +51,15 @@ function Inner() {
       <Page>
         <PageHeader eyebrow="SIGN IN" title="이메일로 로그인" lead="비밀번호 없이, 메일로 받은 링크나 6자리 코드로 로그인합니다. 사건 공유·커뮤니티·동의서에만 필요합니다." />
         {session === undefined && <Loading>로그인 상태 확인 중</Loading>}
-        {session && <Alert tone="info" title="로그인됨">{session.user.email}로 로그인되어 있습니다. 이동합니다…</Alert>}
+        {session && (
+          <Alert tone="info" title="지금 로그인된 계정">
+            {session.user.email}로 로그인되어 있습니다. 다른 계정으로 쓰려면 아래 버튼을 누르세요.
+            <div className="mt-3 flex flex-wrap gap-[9px]">
+              <Btn onClick={() => router.replace(next)}>이 계정으로 계속</Btn>
+              <Btn kind="secondary" onClick={() => runBusy("계정 바꾸는 중", async () => { await signOut(); setSent(false); setCode(""); setMsg(null); setEmail(""); })}>다른 계정으로 로그인</Btn>
+            </div>
+          </Alert>
+        )}
         {msg && <Alert tone={msg.tone} title={msg.tone === "danger" ? "확인 필요" : "메일 보냄"}>{msg.text}</Alert>}
 
         <Section title="1. 이메일 입력" kicker="EMAIL">

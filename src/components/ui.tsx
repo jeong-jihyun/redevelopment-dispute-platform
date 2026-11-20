@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import {
   AlertTriangle, BookOpen, Check, ChevronLeft, Copy, ExternalLink, FileText, FolderLock, Home, Info, MessageCircle, Scale, Search, ShieldAlert, UserRound,
 } from "lucide-react";
+import { cloudReady, useSession } from "@/lib/cloud";
 import { DATA_CHECKED, type LawRef, type Precedent } from "@/lib/data";
 
 
@@ -87,6 +88,19 @@ export function BottomNav() {
   );
 }
 
+/** 로그인한 공유 계정 표시 — 어느 계정으로 보고 있는지 항상 보이게 */
+function AccountChip() {
+  const session = useSession();
+  if (!cloudReady || session === undefined) return null;
+  if (!session) return <Link href="/auth?next=/my" className="rounded-full bg-blue-600 px-3 py-1.5 text-[12px] font-bold text-white">로그인 · 가입</Link>;
+  return (
+    <Link href="/my" aria-label={`로그인 계정 ${session.user.email}`} className="flex max-w-[132px] items-center gap-1.5 rounded-full bg-green-bg px-2.5 py-1.5 text-[11px] font-semibold text-green tab:max-w-[220px]">
+      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-green" aria-hidden />
+      <span className="truncate">{session.user.email}</span>
+    </Link>
+  );
+}
+
 export function TopBar({ title, back, right, crumb }: { title: string; back?: boolean | string; right?: ReactNode; crumb?: string }) {
   const router = useRouter();
   return (
@@ -104,6 +118,7 @@ export function TopBar({ title, back, right, crumb }: { title: string; back?: bo
         {right ?? (
           <div className="flex items-center gap-3.5">
             <span className="hidden rounded-full bg-[#f1f4f8] px-2.5 py-1.5 text-[11px] text-ink-500 desk:inline">자료 확인일 {DATA_CHECKED}</span>
+            <AccountChip />
             <Link href="/my" aria-label="마이페이지" className="grid h-[31px] w-[31px] place-items-center rounded-full bg-[#e6edfa] text-[#2d5592]">
               <UserRound size={17} />
             </Link>

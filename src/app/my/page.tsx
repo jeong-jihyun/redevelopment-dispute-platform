@@ -93,6 +93,17 @@ export default function MyPage() {
         <PageHeader eyebrow="MY PAGE" title="마이페이지" lead="회원정보·이용 이력·알림·자료 백업을 관리합니다." badges={[{ text: "이 기기에 저장", tone: "gray" }, ...(db.profile?.joinedAt ? [{ text: `시작 ${fmtDate(db.profile.joinedAt)}`, tone: "blue" as const }] : [])]} />
         {msg && <Alert tone={msg.tone} title={msg.title}>{msg.text}</Alert>}
 
+        {cloudReady && (
+          <Section title="내 계정" desc="로그인·가입 · 사건 공유·커뮤니티·동의서에 쓰입니다" kicker="ACCOUNT">
+            <Panel>
+              {session ? (
+                <div className="flex flex-wrap items-center gap-[9px]"><p className="t-body flex-1">{session.user.email}로 로그인됨</p><Btn kind="secondary" onClick={() => runBusy("계정 바꾸는 중", async () => { await signOut(); update((d) => logAccess(d, "공유 계정 전환")); location.assign("/auth?next=/my"); })}>다른 계정으로 로그인</Btn><Btn kind="ghost" onClick={() => runBusy("로그아웃 중", async () => { await signOut(); update((d) => logAccess(d, "공유 계정 로그아웃")); })}>로그아웃</Btn></div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-[9px]"><p className="t-desc flex-1">지금은 로그인하지 않은 상태입니다. 이메일로 로그인하면 처음에는 자동으로 가입됩니다. 내 사건은 로그인 없이도 쓸 수 있고, 공유·커뮤니티·동의서에만 필요합니다.</p><Link href="/auth?next=/my" className={btnCls("secondary")}>로그인 · 가입</Link></div>
+              )}
+            </Panel>
+          </Section>
+        )}
         <div className="mt-5 grid grid-cols-2 gap-2.5 tab:grid-cols-4 tab:gap-3.5">
           <MetricCard n={String(db.cases.length)} title="사건" label="내 사건" />
           <MetricCard n={String(db.conversations.length)} title="상담" label="AI 상담" />
@@ -103,24 +114,13 @@ export default function MyPage() {
         <Section title="회원정보" desc="서류 작성자·사건 소유자 이름으로 자동 입력됩니다" kicker="PROFILE">
           <Panel>
             <Field label="이름"><input value={p.name} onChange={(e) => set("name", e.target.value)} className={inputCls} placeholder="홍길동" /></Field>
-            <Field label="이메일" help="참여자 초대 기록에 쓰입니다. 지금은 메일이 발송되지 않습니다."><input type="email" value={p.email} onChange={(e) => set("email", e.target.value)} className={inputCls} placeholder="name@example.com" /></Field>
+            <Field label="이메일" help="서류 작성에 쓰이는 연락처입니다. 로그인 계정과는 별개입니다."><input type="email" value={p.email} onChange={(e) => set("email", e.target.value)} className={inputCls} placeholder="name@example.com" /></Field>
             <SelectField label="내 지위" value={p.role} onChange={(v) => set("role", v)} options={[{ value: "", label: "선택 안 함" }, ...ROLES.map((r) => ({ value: r.name, label: r.name }))]} />
             <Field label="사업 지역" help="새 사건을 만들 때 미리 채워집니다."><input value={p.region} onChange={(e) => set("region", e.target.value)} className={inputCls} placeholder="예) 서울 성북구" /></Field>
             <Btn onClick={saveProfile} disabled={!dirty} className="w-full tab:w-auto">{dirty ? "회원정보 저장" : "저장됨"}</Btn>
           </Panel>
         </Section>
 
-        {cloudReady && (
-          <Section title="공유 계정" desc="사건 공유·커뮤니티·동의서에 쓰는 로그인" kicker="ACCOUNT">
-            <Panel>
-              {session ? (
-                <div className="flex flex-wrap items-center gap-[9px]"><p className="t-body flex-1">{session.user.email}로 로그인됨</p><Btn kind="ghost" onClick={() => runBusy("로그아웃 중", async () => { await signOut(); update((d) => logAccess(d, "공유 계정 로그아웃")); })}>로그아웃</Btn></div>
-              ) : (
-                <div className="flex flex-wrap items-center gap-[9px]"><p className="t-desc flex-1">로그인하지 않아도 내 사건은 그대로 쓸 수 있습니다. 공유·초대받은 사건에만 필요합니다.</p><Link href="/auth?next=/my" className={btnCls("secondary")}>이메일로 로그인</Link></div>
-              )}
-            </Panel>
-          </Section>
-        )}
         <SharedList />
 
         <Section title="알림 설정" kicker="NOTIFICATION">
