@@ -6,7 +6,7 @@ import { Loader2 } from "lucide-react";
 import {
   AlertTriangle, BookOpen, Check, ChevronLeft, Copy, ExternalLink, FileText, FolderLock, Home, Info, LogIn, MessageCircle, Scale, Search, ShieldAlert, UserRound,
 } from "lucide-react";
-import { cloudReady, useSession, acct } from "@/lib/cloud";
+import { cloudReady, useSession, acct, signOut } from "@/lib/cloud";
 import { DATA_CHECKED, type LawRef, type Precedent } from "@/lib/data";
 
 
@@ -104,10 +104,13 @@ function AccountChip() {
   if (!cloudReady || session === undefined) return null;
   if (!session) return <Link href="/auth?next=/my" className="rounded-full bg-blue-600 px-3 py-1.5 text-[12px] font-bold text-white">로그인 · 가입</Link>;
   return (
-    <Link href="/my" aria-label={`로그인 계정 ${acct(session.user)}`} className="flex max-w-[132px] items-center gap-1.5 rounded-full bg-green-bg px-2.5 py-1.5 text-[11px] font-semibold text-green tab:max-w-[220px]">
-      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-green" aria-hidden />
-      <span className="truncate">{acct(session.user)}</span>
-    </Link>
+    <div className="flex items-center gap-1.5">
+      <Link href="/my" aria-label={`로그인 계정 ${acct(session.user)}`} className="flex max-w-[110px] items-center gap-1.5 rounded-full bg-green-bg px-2.5 py-1.5 text-[11px] font-semibold text-green tab:max-w-[220px]">
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-green" aria-hidden />
+        <span className="truncate">{acct(session.user)}</span>
+      </Link>
+      <button type="button" onClick={async () => { await signOut(); location.assign("/auth"); }} className="rounded-full border border-line bg-white px-2.5 py-1.5 text-[11px] font-semibold text-ink-500">로그아웃</button>
+    </div>
   );
 }
 
