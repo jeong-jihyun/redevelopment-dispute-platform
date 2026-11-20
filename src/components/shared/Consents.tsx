@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { dday } from "@/lib/analyze";
 import { printConsent } from "@/lib/consentPrint";
+import { notifyCase, shareKakao } from "@/lib/notify";
 import { addConsent, closeConsent, getConsents, sha256Text, sign, useLive, useLoad, type ConsentForm, type Member, type Signature } from "@/lib/cloud";
 import {
   ActionPanel, Alert, Btn, CardGrid, CaseCard, CheckRow, ChoiceGroup, DataTable, Empty, Field, Loading, Panel, Section, SignaturePad, SubPanel, TextBtn, inputCls, runBusy, type BadgeSpec,
@@ -50,7 +51,7 @@ export default function Consents({ caseId, caseTitle, uid, role, myName, memberC
                 <CaseCard key={x.id} badges={[stateBadge(x), mine ? { text: mine.decision === "agree" ? "내가 동의함" : "내가 반대함", tone: mine.decision === "agree" ? "green" : "red" } : isOpen(x) ? { text: "서명 필요", tone: "amber" } : { text: "미서명", tone: "gray" }]}
                   title={x.title} desc={`동의 ${agree} · 반대 ${s.length - agree} · 미서명 ${Math.max(0, memberCount - s.length)} (참여자 ${memberCount}명)`}
                   meta={`${x.author_name} · ${when(x.created_at)}${x.deadline ? ` · 기한 ${x.deadline}` : ""}`}
-                  footer={<TextBtn onClick={() => setSel(x.id)}>{mine || !isOpen(x) ? "현황 보기 →" : "읽고 서명하기 →"}</TextBtn>} />
+                  footer={<span className="flex gap-3"><TextBtn onClick={() => setSel(x.id)}>{mine || !isOpen(x) ? "현황 보기 →" : "읽고 서명하기 →"}</TextBtn>{isOpen(x) && <KakaoBtn text={`[${caseTitle}] 동의서 서명 요청: ${x.title}`} url={`${typeof location !== "undefined" ? location.origin : ""}/shared/${caseId}?tab=consent`} />}</span>} />
               );
             })}
           </CardGrid>
@@ -58,6 +59,11 @@ export default function Consents({ caseId, caseTitle, uid, role, myName, memberC
       </Section>
     </>
   );
+}
+
+function KakaoBtn({ text, url }: { text: string; url: string }) {
+  const [m, setM] = useState("");
+  return <TextBtn onClick={async () => { const r = await shareKakao(text, url); setM(r === "copied" ? "복사됨" : r === "failed" ? "실패" : ""); }}>{m || "카톡 공유"}</TextBtn>;
 }
 
 function Create({ caseId, myName, done }: { caseId: string; myName: string; done: (id?: string) => void }) {
@@ -71,7 +77,7 @@ function Create({ caseId, myName, done }: { caseId: string; myName: string; done
     if (!title.trim() || !body.trim()) return;
     if (deadline && deadline < new Date().toISOString().slice(0, 10)) { setErr("기한은 오늘 이후 날짜로 정해 주세요."); return; }
     runBusy("동의서 만드는 중", async () => {
-      try { const f = await addConsent({ case_id: caseId, author_name: myName, title, body, deadline: deadline || null }); done(f.id); }
+      try { const f = await addConsent({ case_id: caseId, author_name: myName, title, body, deadline: deadline || null }); void notifyCase(caseId, "새 동의서가 올라왔습니다", `${title.trim()} — 서명해 주세요`, "consent"); done(f.id); }
       catch (e) { setErr(e instanceof Error ? e.message : "만들지 못했습니다."); }
     });
   };
@@ -115,7 +121,7 @@ function Detail({ f, sigs, uid, role, myName, members, caseTitle, back, reload }
       try {
         const h = await sha256Text(f.body);
         if (h !== f.body_hash) throw new Error("화면의 동의서 내용이 서버와 다릅니다. 새로 고친 뒤 다시 서명하세요.");
-        await sign({ form_id: f.id, case_id: f.case_id, signer_name: name.trim(), decision: decision as "agree" | "disagree", signature: png!, body_hash: h });
+        await sign({ form_id: f.id, case_id: f.case_id, signer_name: name.trim(), decision: decision as "agree" | "disagree", signature: png!, body_hash: h }); void notifyCase(f.case_id, "동의서 서명이 도착했습니다", `${name.trim()}님이 ‘${f.title}’에 ${decision === "agree" ? "동의" : "반대"}했습니다`, "consent", true);
         reload();
       } catch (e) { setErr(e instanceof Error ? e.message : "저장하지 못했습니다."); }
     }, 600);

@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { ROLE_LABEL, cloudReady, mySharedCases, useLoad, useSession } from "@/lib/cloud";
+import { useNews } from "@/lib/notify";
 import { fmtDate } from "@/lib/store";
 import { Alert, CardGrid, CaseCard, Empty, Loading, Section } from "@/components/ui";
 
@@ -9,6 +10,7 @@ export default function SharedList() {
   const session = useSession();
   const uid = session?.user.id;
   const list = useLoad(uid ? () => mySharedCases(uid) : null, [uid]);
+  const news = useNews((list.data || []).filter((x) => x.shared_cases).map((x) => x.shared_cases.id), uid);
   if (!cloudReady || session === undefined) return null;
   return (
     <Section title="함께 보는 사건" desc="공유한 사건과 초대받은 사건 · 커뮤니티와 동의서" kicker="SHARED"
@@ -21,7 +23,7 @@ export default function SharedList() {
           <CardGrid>
             {list.data.filter((x) => x.shared_cases).map((x) => (
               <CaseCard key={x.shared_cases.id} href={`/shared/${x.shared_cases.id}`}
-                badges={[{ text: x.role === "owner" ? "내가 공유" : "초대받음", tone: x.role === "owner" ? "blue" : "purple" }, { text: ROLE_LABEL[x.role], tone: "gray" }]}
+                badges={[...(news[x.shared_cases.id] ? [{ text: `새 소식 ${news[x.shared_cases.id]}`, tone: "red" as const }] : []), { text: x.role === "owner" ? "내가 공유" : "초대받음", tone: x.role === "owner" ? "blue" : "purple" }, { text: ROLE_LABEL[x.role], tone: "gray" }]}
                 title={x.shared_cases.title} desc={`${x.shared_cases.owner_name}님의 사건`} meta={`마지막 공유 ${fmtDate(x.shared_cases.updated_at)}`} action="열기" />
             ))}
           </CardGrid>

@@ -1,10 +1,12 @@
 "use client";
 import { useEffect } from "react";
 import { dday } from "@/lib/analyze";
+import { registerSW } from "@/lib/notify";
 import { getDB } from "@/lib/store";
 
 /** 기한 알림: 앱을 열 때 하루 한 번, 3일 안 기한을 브라우저 알림으로 보여 준다 (알림 켬 + 권한 허용 시) */
 export default function Notifier() {
+  useEffect(() => { void registerSW(); }, []);
   useEffect(() => {
     try {
       const db = getDB();

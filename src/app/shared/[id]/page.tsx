@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { ROLE_LABEL, cloudReady, getMembers, getShared, useLoad, useSession } from "@/lib/cloud";
+import { markSeen } from "@/lib/notify";
 import { fmtDate } from "@/lib/store";
 import { Alert, Disclaimer, Empty, Loading, Page, PageHeader, Tabs, TopBar, btnCls } from "@/components/ui";
 import SharedContent from "@/components/shared/SharedContent";
@@ -24,6 +25,7 @@ function Inner() {
   const tab = (TABS as readonly string[]).includes(raw || "") ? raw! : "content";
   const go = (t: string) => router.replace(`/shared/${id}?tab=${t}`, { scroll: false });
 
+  useEffect(() => { if (uid && (tab === "community" || tab === "consent")) markSeen(id); }, [id, uid, tab]);
   const head = <TopBar title={sc.data?.title || "공유 사건"} crumb="공유받은 사건" back="/cases" />;
   if (!cloudReady) return (<>{head}<Page><Alert tone="warn" title="준비 중">공유 서버가 아직 연결되지 않았습니다.</Alert></Page></>);
   if (session === undefined) return (<>{head}<Page><Loading>로그인 상태 확인 중</Loading></Page></>);

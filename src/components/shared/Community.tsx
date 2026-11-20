@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { notifyCase } from "@/lib/notify";
 import { addPost, deletePost, editPost, getPosts, useLive, useLoad, type Member, type Post } from "@/lib/cloud";
 import { maskSensitive } from "@/lib/analyze";
 import { Alert, Badge, Btn, Empty, Field, Loading, Panel, Section, SelectField, TextBtn, inputCls, runBusy } from "@/components/ui";
@@ -30,7 +31,7 @@ export default function Community({ caseId, uid, role, myName }: { caseId: strin
     setErr(null);
     if (!body.trim()) { setErr("내용을 입력해 주세요."); return; }
     runBusy("글 올리는 중", async () => {
-      try { await addPost({ case_id: caseId, author_name: myName, title, body: maskSensitive(body) }); setTitle(""); setBody(""); posts.reload(); }
+      try { await addPost({ case_id: caseId, author_name: myName, title, body: maskSensitive(body) }); void notifyCase(caseId, `${myName}님이 새 글을 올렸습니다`, (title || body).slice(0, 80), "community"); setTitle(""); setBody(""); posts.reload(); }
       catch (e) { setErr(e instanceof Error ? e.message : "올리지 못했습니다."); }
     });
   };
@@ -80,7 +81,7 @@ function Thread({ p, replies, uid, role, myName, caseId, open, toggle, reload }:
   const send = () => {
     if (!reply.trim()) return;
     runBusy("댓글 다는 중", async () => {
-      try { await addPost({ case_id: caseId, parent_id: p.id, author_name: myName, body: maskSensitive(reply) }); setReply(""); reload(); }
+      try { await addPost({ case_id: caseId, parent_id: p.id, author_name: myName, body: maskSensitive(reply) }); void notifyCase(caseId, `${myName}님이 댓글을 남겼습니다`, reply.slice(0, 80), "community"); setReply(""); reload(); }
       catch (e) { setErr(e instanceof Error ? e.message : "올리지 못했습니다."); }
     });
   };

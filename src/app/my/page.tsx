@@ -5,6 +5,7 @@ import { ROLES } from "@/lib/data";
 import { buildIcs, clearAllFiles, exportBackup, readBackup, restoreFiles, saveFile, usedStorage } from "@/lib/cases";
 import { fmtDate, fmtSize, getDB, logAccess, now, update, useDB, type Profile } from "@/lib/store";
 import { cloudReady, signOut, useSession } from "@/lib/cloud";
+import { disablePush, enablePush, isIOS, isStandalone, pushOn, pushSupported } from "@/lib/notify";
 import SharedList from "@/components/shared/SharedList";
 import {
   Alert, Btn, CheckRow, DataTable, Disclaimer, Empty, Field, MetricCard, runBusy, useBusy, Page, PageHeader, Panel, Section, SelectField, TopBar, btnCls, inputCls,
@@ -25,6 +26,14 @@ export default function MyPage() {
   const [perm, setPerm] = useState<string>("default");
   const fileIn = useRef<HTMLInputElement>(null);
   const session = useSession();
+  const [push, setPush] = useState(false);
+  const [pushErr, setPushErr] = useState("");
+  useEffect(() => { if (session) pushOn().then(setPush).catch(() => {}); }, [session]);
+  const togglePush = (v: boolean) => runBusy(v ? "푸시 알림 켜는 중" : "푸시 알림 끄는 중", async () => {
+    setPushErr("");
+    try { if (v) await enablePush(session!.user.id); else await disablePush(); setPush(v); update((d) => logAccess(d, `푸시 알림 ${v ? "켬" : "끔"}`)); }
+    catch (e) { setPushErr(e instanceof Error ? e.message : "처리하지 못했습니다."); }
+  });
 
   useEffect(() => { setP({ ...EMPTY, ...(getDB().profile || {}) }); usedStorage().then(setStorage); if (typeof Notification !== "undefined") setPerm(Notification.permission); }, []);
   const set = <K extends keyof Profile>(k: K, v: Profile[K]) => { setP((x) => ({ ...x, [k]: v })); setDirty(true); };
@@ -119,6 +128,15 @@ export default function MyPage() {
             <CheckRow checked={!!db.profile?.notify} onChange={toggleNotify} title="기한 알림 받기" desc="앱을 열 때 3일 안에 다가오는 기한을 알려 드립니다."
               right={<span className="t-meta">{perm === "granted" ? "허용됨" : perm === "denied" ? "차단됨" : "미설정"}</span>} />
           </Panel>
+          {session && cloudReady && (
+            <Panel className="!py-1">
+              <CheckRow checked={push} onChange={togglePush} title="공유 사건 푸시 알림" desc="새 글·댓글·동의서가 올라오면 폰 알림창으로 알려 드립니다 (이 기기에서만)."
+                right={<span className="t-meta">{push ? "켜짐" : "꺼짐"}</span>} />
+            </Panel>
+          )}
+          {pushErr && <Alert tone="warn" title="푸시 알림">{pushErr}</Alert>}
+          {session && isIOS() && !isStandalone() && <Alert tone="info" title="아이폰 안내">푸시는 사파리 ‘공유 → 홈 화면에 추가’로 설치한 앱에서만 켜집니다. 안드로이드·PC 크롬은 바로 켤 수 있습니다.</Alert>}
+          {session && !pushSupported() && !isIOS() && <Alert tone="info" title="푸시 미지원">이 브라우저는 푸시를 지원하지 않습니다. 앱 안 ‘새 소식’ 표시와 카톡 공유는 그대로 쓸 수 있습니다.</Alert>}
           {perm === "denied" && db.profile?.notify && <Alert tone="warn" title="알림 차단됨">브라우저 설정에서 이 사이트 알림을 허용해야 합니다. 앱 안의 ‘다가오는 기한’ 표시는 그대로 보입니다.</Alert>}
           <Alert tone="info" title="확실한 알림">앱을 닫아 두어도 알림을 받으려면 일정을 휴대폰 캘린더에 넣으세요. 기한 7일 전·하루 전에 캘린더가 알려 줍니다.</Alert>
           <Btn kind="secondary" disabled={!open.length} onClick={() => runBusy("캘린더 파일 만드는 중", () => { saveFile(buildIcs(open), `내사건_일정_${new Date().toISOString().slice(0, 10)}.ics`); update((d) => logAccess(d, `캘린더 파일 내려받기 (${open.length}건)`)); })}>

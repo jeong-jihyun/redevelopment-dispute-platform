@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { notifyCase } from "@/lib/notify";
 import { cloudReady, joinCase, useSession } from "@/lib/cloud";
 import { getDB } from "@/lib/store";
 import { Alert, Btn, Disclaimer, Field, Loading, Page, PageHeader, Panel, Section, StepList, TopBar, btnCls, inputCls, runBusy } from "@/components/ui";
@@ -18,7 +19,7 @@ function Inner() {
   const join = () => {
     if (!name.trim()) { setErr("이름을 입력해 주세요. 다른 참여자에게 이 이름으로 보입니다."); return; }
     runBusy("사건에 참여하는 중", async () => {
-      try { const id = await joinCase(code, name.trim()); router.replace(`/shared/${id}`); await new Promise((r) => setTimeout(r, 600)); }
+      try { const id = await joinCase(code, name.trim()); void notifyCase(id, "새 참여자가 들어왔습니다", `${name.trim()}님이 초대 링크로 참여했습니다`, "members", true); router.replace(`/shared/${id}`); await new Promise((r) => setTimeout(r, 600)); }
       catch (e) { setErr(e instanceof Error ? e.message : "참여하지 못했습니다."); }
     });
   };
