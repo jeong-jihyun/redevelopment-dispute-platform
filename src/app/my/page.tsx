@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { ROLES } from "@/lib/data";
 import { buildIcs, clearAllFiles, exportBackup, readBackup, restoreFiles, saveFile, usedStorage } from "@/lib/cases";
@@ -8,7 +9,7 @@ import { cloudReady, signOut, useSession } from "@/lib/cloud";
 import { disablePush, enablePush, isIOS, isStandalone, pushOn, pushSupported } from "@/lib/notify";
 import SharedList from "@/components/shared/SharedList";
 import {
-  Alert, Btn, CheckRow, DataTable, Disclaimer, Empty, Field, MetricCard, runBusy, useBusy, Page, PageHeader, Panel, Section, SelectField, TopBar, btnCls, inputCls,
+  Alert, Btn, Loading, CheckRow, DataTable, Disclaimer, Empty, Field, MetricCard, runBusy, useBusy, Page, PageHeader, Panel, Section, SelectField, TopBar, btnCls, inputCls,
 } from "@/components/ui";
 
 const EMPTY: Profile = { name: "", email: "", role: "", region: "", notify: false };
@@ -26,6 +27,8 @@ export default function MyPage() {
   const [perm, setPerm] = useState<string>("default");
   const fileIn = useRef<HTMLInputElement>(null);
   const session = useSession();
+  const router = useRouter();
+  useEffect(() => { if (cloudReady && session === null) router.replace("/auth?next=/my"); }, [session, router]);
   const [push, setPush] = useState(false);
   const [pushErr, setPushErr] = useState("");
   useEffect(() => { if (session) pushOn().then(setPush).catch(() => {}); }, [session]);
@@ -86,6 +89,9 @@ export default function MyPage() {
     await new Promise((r) => setTimeout(r, 3000));
   }
 
+  /* 비로그인: 마이페이지 대신 로그인·가입 화면으로 보낸다 (로그인해야 마이페이지가 열림) */
+  if (cloudReady && session !== undefined && !session) return (<><TopBar title="마이페이지" crumb="도시정비 분쟁지원" /><Page><Loading>로그인 화면으로 이동 중</Loading></Page></>);
+  if (cloudReady && session === undefined) return (<><TopBar title="마이페이지" crumb="도시정비 분쟁지원" /><Page><Loading>로그인 상태 확인 중</Loading></Page></>);
   return (
     <>
       <TopBar title="마이페이지" crumb="도시정비 분쟁지원" />

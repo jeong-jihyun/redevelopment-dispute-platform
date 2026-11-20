@@ -43,13 +43,13 @@ function Inner() {
     });
   };
 
-  if (!cloudReady) return (<><TopBar title="로그인" back="/my" /><Page><Alert tone="warn" title="준비 중">공유 서버가 아직 연결되지 않았습니다.</Alert></Page></>);
+  if (!cloudReady) return (<><TopBar title="로그인" /><Page><Alert tone="warn" title="준비 중">공유 서버가 아직 연결되지 않았습니다.</Alert></Page></>);
 
   return (
     <>
-      <TopBar title="로그인" crumb="공유·커뮤니티" back="/my" />
+      <TopBar title="로그인" crumb="공유·커뮤니티" />
       <Page>
-        <PageHeader eyebrow="SIGN IN" title="이메일로 로그인" lead="비밀번호 없이, 메일로 받은 링크나 6자리 코드로 로그인합니다. 사건 공유·커뮤니티·동의서에만 필요합니다." />
+        <PageHeader eyebrow="SIGN IN" title="로그인 · 회원가입" lead="처음이면 자동으로 가입됩니다. 비밀번호 없이, 메일로 받은 6자리 코드나 링크로 로그인합니다." />
         {session === undefined && <Loading>로그인 상태 확인 중</Loading>}
         {session && (
           <Alert tone="info" title="지금 로그인된 계정">

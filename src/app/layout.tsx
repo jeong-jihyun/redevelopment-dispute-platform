@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { BottomNav, BusyOverlay, Sidebar } from "@/components/ui";
+import { BusyOverlay } from "@/components/ui";
+import AuthShell from "@/components/AuthShell";
 import Notifier from "@/components/Notifier";
 
 export const metadata: Metadata = {
@@ -20,11 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
       </head>
       <body>
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <div className="min-w-0 flex-1">{children}</div>
-        </div>
-        <BottomNav />
+        <AuthShell>{children}</AuthShell>
         <Notifier />
         <BusyOverlay />
       </body>
